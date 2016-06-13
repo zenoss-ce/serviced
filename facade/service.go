@@ -505,6 +505,7 @@ func (f *Facade) validateServiceDeployment(ctx datastore.Context, parentID strin
 func (f *Facade) validateServiceMigration(ctx datastore.Context, svcs []service.Service) error {
 	svcParentMapNameMap := make(map[string]map[string]struct{})
 	endpointMap := make(map[string]struct{})
+	idMap := make(map[string]service.Service)
 	for _, svc := range svcs {
 		// check for name uniqueness within the set of new/modified/deployed services
 		if svcNameMap, ok := svcParentMapNameMap[svc.ParentServiceID]; ok {
@@ -533,7 +534,7 @@ func (f *Facade) validateServiceMigration(ctx datastore.Context, svcs []service.
 		//
 		// Note - this is not the most performant way to do this, but migration is not a
 		// performance-critical operation, so no-harm/no-foul.
-		if err := f.validateServiceEndpoints(ctx, &svc); err != nil {
+		if err := f.validateServiceEndpoints(ctx, &svc, &idMap); err != nil {
 			glog.Errorf("Migrated service %s has a duplicate endpoint: %s", svc.Name, err)
 			return ErrServiceDuplicateEndpoint
 		}
@@ -819,6 +820,23 @@ func (f *Facade) GetTenantID(ctx datastore.Context, serviceID string) (string, e
 	glog.V(3).Infof("Facade.GetTenantId: %s", serviceID)
 	gs := func(id string) (service.Service, error) {
 		return f.getService(ctx, id)
+	}
+	return getTenantID(serviceID, gs)
+}
+
+// The tenant id is the root service uuid. Walk the service tree to root to find the tenant id.
+// Cache the service lookups for speed or to allow lookups for services that are not yet created.
+func (f *Facade) GetTenantIDWithCache(ctx datastore.Context, serviceID string, cache *map[string]service.Service) (string, error) {
+	glog.V(3).Infof("Facade.GetTenantId: %s", serviceID)
+	gs := func(id string) (service.Service, error) {
+		if svc, ok := (*cache)[id]; ok {
+			return svc, nil
+		}
+		svc, err := f.getService(ctx, id)
+		if err == nil {
+			(*cache)[id] = svc
+		}
+		return svc, err
 	}
 	return getTenantID(serviceID, gs)
 }
@@ -1761,7 +1779,7 @@ func (f *Facade) fillServiceAddr(ctx datastore.Context, svc *service.Service) er
 // endpoints.
 // WARNING: This code is only used in CC 1.1 in the context of service migrations, but it should be
 //          added back in CC 1.2 in a more general way (see CC-811 for more information)
-func (f *Facade) validateServiceEndpoints(ctx datastore.Context, svc *service.Service) error {
+func (f *Facade) validateServiceEndpoints(ctx datastore.Context, svc *service.Service, cache *map[string]service.Service) error {
 	epValidator := service.NewServiceEndpointValidator()
 	vErr := validation.NewValidationError()
 
@@ -1770,6 +1788,8 @@ func (f *Facade) validateServiceEndpoints(ctx datastore.Context, svc *service.Se
 		glog.Errorf("Service %s (%s) has duplicate endpoints: %s", svc.Name, svc.ID, vErr)
 		return vErr
 	}
+
+	(*cache)[svc.ID] = *svc
 
 	var tenantID string
 	if svc.ParentServiceID == "" {
@@ -1784,7 +1804,7 @@ func (f *Facade) validateServiceEndpoints(ctx datastore.Context, svc *service.Se
 		tenantID = svc.ID
 	} else {
 		var err error
-		if tenantID, err = f.GetTenantID(ctx, svc.ParentServiceID); err != nil {
+		if tenantID, err = f.GetTenantIDWithCache(ctx, svc.ParentServiceID, cache); err != nil {
 			glog.Errorf("Could not look up tenantID for service %s (%s): %s", svc.Name, svc.ID, err)
 			return err
 		}
