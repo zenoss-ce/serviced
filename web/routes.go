@@ -120,6 +120,9 @@ func (sc *ServiceConfig) getRoutes() []rest.Route {
 		rest.Route{"GET", "/stats", gz(sc.isCollectingStats())},
 		rest.Route{"GET", "/version", gz(sc.authorizedClient(restGetServicedVersion))},
 		rest.Route{"GET", "/storage", gz(sc.authorizedClient(restGetStorage))},
+
+		rest.Route{"GET", "/vizceral/hosts", gz(sc.checkAuth(restGetVizceralHosts))},
+		//rest.Route{"GET", "/vizceral/pools", gz(sc.authorizedClient(restGetStorage))},
 	}
 
 	// Hardcoding these target URLs for now.

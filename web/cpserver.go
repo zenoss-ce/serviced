@@ -354,10 +354,10 @@ func (sc *ServiceConfig) newRequestHandler(check checkFunc, realfunc ctxhandlerF
 
 func (sc *ServiceConfig) checkAuth(realfunc ctxhandlerFunc) handlerFunc {
 	check := func(w *rest.ResponseWriter, r *rest.Request) bool {
-		if !loginOK(r) {
-			restUnauthorized(w)
-			return false
-		}
+		//if !loginOK(r) {
+		//	restUnauthorized(w)
+		//	return false
+		//}
 		return true
 	}
 	return sc.newRequestHandler(check, realfunc)
