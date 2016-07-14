@@ -345,6 +345,8 @@ func getRuntimeOptions(ctx *cli.Context) config.Options {
 		options.MuxDisableTLS = true
 	}
 
+	utils.SetRpcPort(options.Listen)
+
 	return options
 }
 
