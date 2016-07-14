@@ -278,6 +278,8 @@ func getRuntimeOptions(ctx *cli.Context) api.Options {
 
 	options.Endpoint = getEndpoint(options)
 
+	utils.SetRpcPort(options.Listen)
+
 	return options
 }
 
