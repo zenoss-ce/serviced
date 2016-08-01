@@ -190,15 +190,6 @@ func (d *daemon) stopISVCS() {
 }
 
 func (d *daemon) startRPC() {
-	if options.DebugPort > 0 {
-		go func() {
-			if err := http.ListenAndServe(fmt.Sprintf("127.0.0.1:%d", options.DebugPort), nil); err != nil {
-				glog.Errorf("Unable to bind to debug port %s. Is another instance running?", err)
-				return
-			}
-		}()
-	}
-
 	var listener net.Listener
 	var err error
 	if rpcutils.RPCDisableTLS {
@@ -300,62 +291,81 @@ func (d *daemon) startDockerRegistryProxy() {
 }
 
 func (d *daemon) run() (err error) {
-	if d.hostID, err = utils.HostID(); err != nil {
-		glog.Fatalf("Could not get host ID: %s", err)
-	} else if err := validation.ValidHostID(d.hostID); err != nil {
-		glog.Errorf("invalid hostid: %s", d.hostID)
-	}
 
-	if currentDockerVersion, err := node.GetDockerVersion(); err != nil {
-		glog.Fatalf("Could not get docker version: %s", err)
-	} else if minDockerVersion.Compare(currentDockerVersion) < 0 {
-		glog.Fatalf("serviced requires docker >= %s", minDockerVersion)
-	}
+	if options.Master || options.Agent {
+		if d.hostID, err = utils.HostID(); err != nil {
+			glog.Fatalf("Could not get host ID: %s", err)
+		} else if err := validation.ValidHostID(d.hostID); err != nil {
+			glog.Errorf("invalid hostid: %s", d.hostID)
+		}
 
-	if !volume.Registered(options.FSType) {
-		glog.Fatalf("no driver registered for %s", options.FSType)
-	}
+		if currentDockerVersion, err := node.GetDockerVersion(); err != nil {
+			glog.Fatalf("Could not get docker version: %s", err)
+		} else if minDockerVersion.Compare(currentDockerVersion) < 0 {
+			glog.Fatalf("serviced requires docker >= %s", minDockerVersion)
+		}
 
-	// set up docker
-	d.docker, err = docker.NewDockerClient()
-	if err != nil {
-		glog.Fatalf("Could not connect to docker client: %s", err)
-	}
+		if !volume.Registered(options.FSType) {
+			glog.Fatalf("no driver registered for %s", options.FSType)
+		}
 
-	// set up the registry
-	d.reg = registry.NewRegistryListener(d.docker, dockerRegistry, d.hostID)
+		// set up docker
+		d.docker, err = docker.NewDockerClient()
+		if err != nil {
+			glog.Fatalf("Could not connect to docker client: %s", err)
+		}
 
-	// Initialize the storage driver
-	if !filepath.IsAbs(options.VolumesPath) {
-		glog.Fatalf("volumes path %s must be absolute", options.VolumesPath)
-	}
-	if err := volume.InitDriver(options.FSType, options.VolumesPath, options.StorageArgs); err != nil {
-		glog.Fatalf("Could not initialize storage driver type=%s root=%s args=%v options=%+v: %s", options.FSType, options.VolumesPath, options.StorageArgs, options.StorageOptions, err)
-	}
-	d.startRPC()
-	d.startDockerRegistryProxy()
+		// set up the registry
+		d.reg = registry.NewRegistryListener(d.docker, dockerRegistry, d.hostID)
 
-	//Start the zookeeper client
-	localClient, err := d.initZK(options.Zookeepers)
-	if err != nil {
-		glog.Errorf("failed to create a local coordclient: %v", err)
-		return err
+		// Initialize the storage driver
+		if !filepath.IsAbs(options.VolumesPath) {
+			glog.Fatalf("volumes path %s must be absolute", options.VolumesPath)
+		}
+		if err := volume.InitDriver(options.FSType, options.VolumesPath, options.StorageArgs); err != nil {
+			glog.Fatalf("Could not initialize storage driver type=%s root=%s args=%v options=%+v: %s", options.FSType, options.VolumesPath, options.StorageArgs, options.StorageOptions, err)
+		}
+		d.startRPC()
+		d.startDockerRegistryProxy()
+
+		//Start the zookeeper client
+		localClient, err := d.initZK(options.Zookeepers)
+		if err != nil {
+			glog.Errorf("failed to create a local coordclient: %v", err)
+			return err
+		}
+		zzk.InitializeLocalClient(localClient)
 	}
-	zzk.InitializeLocalClient(localClient)
 
 	if options.Master {
 		d.startISVCS()
 		if err := d.startMaster(); err != nil {
 			glog.Fatal(err)
 		}
-	} else {
-		d.startAgentISVCS(options.StartISVCS)
 	}
 
 	if options.Agent {
 		if err := d.startAgent(); err != nil {
 			glog.Fatal(err)
 		}
+		if !options.Master {
+			d.startAgentISVCS(options.StartISVCS)
+		}
+	}
+
+	if options.Mux {
+		if err := d.startMux(); err != nil {
+			glog.Fatal(err)
+		}
+	}
+
+	if options.DebugPort > 0 {
+		go func() {
+			if err := http.ListenAndServe(fmt.Sprintf("0.0.0.0:%d", options.DebugPort), nil); err != nil {
+				glog.Errorf("Unable to bind to debug port %s. Is another instance running?", err)
+				return
+			}
+		}()
 	}
 
 	signalC := make(chan os.Signal, 10)
@@ -379,17 +389,19 @@ func (d *daemon) run() (err error) {
 		defer glog.Infof("Timeout waiting for shutdown")
 	}
 
-	zzk.ShutdownConnections()
-	switch sig {
-	case syscall.SIGHUP:
-		glog.Infof("Not shutting down isvcs")
-		command := os.Args
-		glog.Infof("Reloading by calling syscall.exec for command: %+v\n", command)
-		syscall.Exec(command[0], command[0:], os.Environ())
-	default:
-		d.stopISVCS()
+	if options.Master || options.Agent {
+		zzk.ShutdownConnections()
+		switch sig {
+		case syscall.SIGHUP:
+			glog.Infof("Not shutting down isvcs")
+			command := os.Args
+			glog.Infof("Reloading by calling syscall.exec for command: %+v\n", command)
+			syscall.Exec(command[0], command[0:], os.Environ())
+		default:
+			d.stopISVCS()
+		}
+		d.hcache.SetPurgeFrequency(0)
 	}
-	d.hcache.SetPurgeFrequency(0)
 	return nil
 }
 
@@ -559,17 +571,21 @@ func createMuxListener() (net.Listener, error) {
 	return net.Listen("tcp", fmt.Sprintf(":%d", options.MuxPort))
 }
 
-func (d *daemon) startAgent() error {
+func (d *daemon) startMux() error {
 	muxListener, err := createMuxListener()
 	if err != nil {
 		glog.Errorf("Could not create mux listener: %s", err)
 		return err
 	}
-	mux, err := proxy.NewTCPMux(muxListener)
+	_, err = proxy.NewTCPMux(muxListener)
 	if err != nil {
 		glog.Errorf("Could not create TCP mux listener: %s", err)
 		return err
 	}
+	return nil
+}
+
+func (d *daemon) startAgent() error {
 
 	agentIP := options.OutboundIP
 	if agentIP == "" {
@@ -691,7 +707,6 @@ func (d *daemon) startAgent() error {
 			Mount:                options.Mount,
 			FSType:               options.FSType,
 			Zookeepers:           options.Zookeepers,
-			Mux:                  mux,
 			UseTLS:               options.TLS,
 			DockerRegistry:       dockerRegistry,
 			MaxContainerAge:      time.Duration(int(time.Second) * options.MaxContainerAge),

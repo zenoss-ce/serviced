@@ -82,8 +82,7 @@ type HostAgent struct {
 	storage              volume.Driver        // driver supporting the application data
 	mount                []string             // each element is in the form: dockerImage,hostPath,containerPath
 	currentServices      map[string]*exec.Cmd // the current running services
-	mux                  *proxy.TCPMux
-	useTLS               bool // Whether the mux uses TLS
+	useTLS               bool                 // Whether the mux uses TLS
 	proxyRegistry        proxy.ProxyRegistry
 	zkClient             *coordclient.Client
 	maxContainerAge      time.Duration   // maximum age for a stopped container before it is removed
@@ -118,7 +117,6 @@ type AgentOptions struct {
 	Mount                []string
 	FSType               volume.DriverType
 	Zookeepers           []string
-	Mux                  *proxy.TCPMux
 	UseTLS               bool
 	DockerRegistry       string
 	MaxContainerAge      time.Duration // Maximum container age for a stopped container before being removed
@@ -140,7 +138,6 @@ func NewHostAgent(options AgentOptions, reg registry.Registry) (*HostAgent, erro
 	agent.rpcport = options.RPCPort
 	agent.dockerDNS = options.DockerDNS
 	agent.mount = options.Mount
-	agent.mux = options.Mux
 	agent.useTLS = options.UseTLS
 	agent.maxContainerAge = options.MaxContainerAge
 	agent.virtualAddressSubnet = options.VirtualAddressSubnet

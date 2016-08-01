@@ -718,14 +718,16 @@ func (l *loggingT) output(s severity, buf *buffer) {
 		}
 	}
 	data := buf.Bytes()
-	if l.logstashType != "" && l.logstashURL != "" {
-		l.logstashOnce.Do(l.startLogstash)
-		select {
-		case l.logstashChan <- string(data):
-		default:
-			fmt.Fprintln(os.Stderr, "Logstash buffer is full.")
+	/*
+		if l.logstashType != "" && l.logstashURL != "" {
+			l.logstashOnce.Do(l.startLogstash)
+			select {
+			case l.logstashChan <- string(data):
+			default:
+				fmt.Fprintln(os.Stderr, "Logstash buffer is full.")
+			}
 		}
-	}
+	*/
 	stderrstring := string(data)
 	if l.color {
 		stderrstring = "" + stderrstring

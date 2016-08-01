@@ -50,6 +50,7 @@ type Options struct {
 	Master                     bool
 	DockerDNS                  []string
 	Agent                      bool
+	Mux                        bool
 	MuxPort                    int
 	TLS                        bool
 	KeyPEMFile                 string
@@ -147,7 +148,10 @@ func ValidateCommonOptions(opts Options) error {
 // Validate options which are specific to running a master and/or agent
 func ValidateServerOptions() error {
 	if !options.Master && !options.Agent {
-		return fmt.Errorf("serviced cannot be started: no mode (master or agent) was specified")
+		if options.Mux {
+			return nil
+		}
+		return fmt.Errorf("serviced cannot be started: no mode (master or agent or mux) was specified")
 	} else if err := validateStorageArgs(); err != nil {
 		return err
 	}
@@ -212,6 +216,7 @@ func GetDefaultOptions(config utils.ConfigReader) Options {
 		DockerDNS:                  config.StringSlice("DOCKER_DNS", []string{}),
 		Master:                     config.BoolVal("MASTER", false),
 		Agent:                      config.BoolVal("AGENT", false),
+		Mux:                        config.BoolVal("MUX", false),
 		MuxPort:                    config.IntVal("MUX_PORT", 22250),
 		KeyPEMFile:                 config.StringVal("KEY_FILE", ""),
 		CertPEMFile:                config.StringVal("CERT_FILE", ""),

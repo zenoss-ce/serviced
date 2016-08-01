@@ -67,7 +67,8 @@ func New(driver api.API, config utils.ConfigReader) *ServicedCli {
 		cli.StringSliceFlag{"docker-dns", convertToStringSlice(defaultOps.DockerDNS), "docker dns configuration used for running containers"},
 		cli.BoolFlag{"master", "run in master mode, i.e., the control center service"},
 		cli.BoolFlag{"agent", "run in agent mode, i.e., a host in a resource pool"},
-		cli.IntFlag{"mux", defaultOps.MuxPort, "multiplexing port"},
+		cli.BoolFlag{"mux", "run in mux mode"},
+		cli.IntFlag{"mux-port", defaultOps.MuxPort, "multiplexing port"},
 		cli.StringFlag{"volumes-path", defaultOps.VolumesPath, "path where application data is stored"},
 		cli.StringFlag{"isvcs-path", defaultOps.IsvcsPath, "path where internal application data is stored"},
 		cli.StringFlag{"backups-path", defaultOps.BackupsPath, "default path where backups are stored"},
@@ -203,7 +204,8 @@ func getRuntimeOptions(ctx *cli.Context) api.Options {
 		DockerDNS:                  ctx.GlobalStringSlice("docker-dns"),
 		Master:                     ctx.GlobalBool("master"),
 		Agent:                      ctx.GlobalBool("agent"),
-		MuxPort:                    ctx.GlobalInt("mux"),
+		Mux:                        ctx.GlobalBool("mux"),
+		MuxPort:                    ctx.GlobalInt("mux-port"),
 		TLS:                        true,
 		VolumesPath:                ctx.GlobalString("volumes-path"),
 		IsvcsPath:                  ctx.GlobalString("isvcs-path"),
@@ -261,6 +263,9 @@ func getRuntimeOptions(ctx *cli.Context) api.Options {
 	}
 	if os.Getenv("SERVICED_AGENT") == "1" {
 		options.Agent = true
+	}
+	if os.Getenv("SERVICED_MUX") == "1" {
+		options.Mux = true
 	}
 
 	if options.Master {
