@@ -217,6 +217,7 @@ func GetDefaultOptions(config utils.ConfigReader) Options {
 		Master:                     config.BoolVal("MASTER", false),
 		Agent:                      config.BoolVal("AGENT", false),
 		Mux:                        config.BoolVal("MUX", false),
+		TLS:                        config.BoolVal("MUX_TLS", true),
 		MuxPort:                    config.IntVal("MUX_PORT", 22250),
 		KeyPEMFile:                 config.StringVal("KEY_FILE", ""),
 		CertPEMFile:                config.StringVal("CERT_FILE", ""),

@@ -15,13 +15,17 @@ package main
 
 import (
 	"fmt"
+	"net/http"
 	"net/url"
 	"os"
 	"strings"
 
+	_ "net/http/pprof"
+
 	"github.com/codegangsta/cli"
 	"github.com/control-center/serviced/servicedversion"
 	"github.com/control-center/serviced/utils"
+	"github.com/zenoss/glog"
 )
 
 func main() {
@@ -55,5 +59,11 @@ func main() {
 	}
 
 	app.Action = CmdServiceProxy
+	go func() {
+		if err := http.ListenAndServe(fmt.Sprintf("0.0.0.0:%d", 6006), nil); err != nil {
+			glog.Errorf("Unable to bind to debug port %s. Is another instance running?", err)
+			return
+		}
+	}()
 	app.Run(os.Args)
 }
