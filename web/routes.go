@@ -103,6 +103,7 @@ func (sc *ServiceConfig) getRoutes() []rest.Route {
 
 		// Stats
 		rest.Route{"GET", "/stats_meta/:entity", gz(sc.checkAuth(restGetStatsMeta))},
+		rest.Route{"GET", "/stats/:entity", gz(sc.checkAuth(restGetStats))},
 
 		// Login
 		rest.Route{"POST", "/login", gz(sc.unAuthorizedClient(restLogin))},
