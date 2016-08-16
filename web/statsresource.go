@@ -32,9 +32,9 @@ func msToTime(ms string) (time.Time, error) {
 	return time.Unix(0, msInt*int64(time.Millisecond)), nil
 }
 
-// statRequest is a validated and defaulted
+// StatRequest is a validated and defaulted
 // request for stats
-type statRequest struct {
+type StatRequest struct {
 	EntityIDs  []string
 	Stats      []string
 	Start      time.Time
@@ -42,10 +42,10 @@ type statRequest struct {
 	Resolution time.Duration
 }
 
-// statResult contains stat values as well
+// StatResult contains stat values as well
 // as other supporting information about a
 // specific stat
-type statResult struct {
+type StatResult struct {
 	entityID  string
 	Stat      string
 	Values    []int
@@ -54,78 +54,126 @@ type statResult struct {
 	Error     string
 }
 
-// statFetcher is function that, given a statRequest,
-// can produce an array of statResults
-type statFetcher func(*statRequest) ([]statResult, error)
+// StatFetcher is function that, given a StatRequest,
+// can produce an array of StatResults
+type StatFetcher func(*StatRequest, StatInfo) ([]StatResult, error)
 
 // StatDetails provides details about an available stat
 type StatDetails struct {
-	StatID string
-	Label  string
-	Unit   string
+	StatID    string
+	Label     string
+	Unit      string
+	Threshold string
 }
 
 // StatInfo provides a way to describe available
-// stats and how to get them
+// stats and how to get them. This serves as the
+// interface for adding more stats and endpoints
 type StatInfo struct {
 	details []StatDetails
-	fetch   statFetcher
+	fetch   StatFetcher
+}
+
+var hostsInfo = StatInfo{
+	[]StatDetails{
+		{"mem", "Memory", "B", "90%"},
+		{"cpu", "CPU", "pct", "90%"},
+		{"docker_storage", "Docker Storage", "B", "90%"},
+	},
+	demoStatFetcher,
+}
+
+var mastersInfo = StatInfo{
+	[]StatDetails{
+		{"mem", "Memory", "B", "90%"},
+		{"cpu", "CPU", "pct", "90%"},
+		{"docker_storage", "Docker Storage", "B", "90%"},
+		{"dfs_storage", "DFS Storage", "B", "90%"},
+	},
+	demoStatFetcher,
+}
+
+var backupsInfo = StatInfo{
+	[]StatDetails{
+		{"size", "Size", "B", "90%"},
+	},
+	demoStatFetcher,
+}
+
+var poolsInfo = StatInfo{
+	[]StatDetails{
+		{"mem", "Memory", "B", "90%"},
+		{"cpu", "CPU", "pct", "90%"},
+	},
+	demoStatFetcher,
+}
+
+var isvcsInfo = StatInfo{
+	[]StatDetails{
+		{"mem", "Memory", "B", "90%"},
+		{"cpu", "CPU", "pct", "90%"},
+		{"size", "Size", "B", "90%"},
+	},
+	demoStatFetcher,
 }
 
 var availableStats = map[string]StatInfo{
-	"hosts": StatInfo{
-		[]StatDetails{
-			{"mem", "Memory", "B"},
-			{"cpu", "CPU", "pct"},
-			{"docker_storage", "Docker Storage", "B"},
-		},
-		demoStatFetcher,
-	},
-	"masters": StatInfo{
-		[]StatDetails{
-			{"mem", "Memory", "B"},
-			{"cpu", "CPU", "pct"},
-			{"docker_storage", "Docker Storage", "B"},
-			{"dfs_storage", "DFS Storage", "B"},
-		},
-		demoStatFetcher,
-	},
-	"backups": StatInfo{
-		[]StatDetails{
-			{"size", "Size", "B"},
-		},
-		demoStatFetcher,
-	},
-	"pools": StatInfo{
-		[]StatDetails{
-			{"mem", "Memory", "B"},
-			{"cpu", "CPU", "pct"},
-		},
-		demoStatFetcher,
-	},
-	"isvcs": StatInfo{
-		[]StatDetails{
-			{"mem", "Memory", "B"},
-			{"cpu", "CPU", "pct"},
-			{"size", "Size", "B"},
-		},
-		demoStatFetcher,
-	},
+	"hosts":   hostsInfo,
+	"masters": mastersInfo,
+	"backups": backupsInfo,
+	"pools":   poolsInfo,
+	"isvcs":   isvcsInfo,
 }
 
-func demoStatFetcher(sr *statRequest) (results []statResult, err error) {
+// getStatDetail searches through a StatInfo for
+// the StatDetails object that matches the provided
+// stat id
+func getStatDetail(details []StatDetails, statID string) (StatDetails, error) {
+	for _, i := range details {
+		if i.StatID == statID {
+			return i, nil
+		}
+	}
+	return StatDetails{}, fmt.Errorf("Could not find stat %s", statID)
+}
+
+func applyThreshold(threshold string, val int) (int, error) {
+	return 90, nil
+}
+
+func demoStatFetcher(sr *StatRequest, info StatInfo) (results []StatResult, err error) {
+	// NOTE - pretend request is for hosts
+	entity := "hosts"
+	details := info.details
+
 	for _, stat := range sr.Stats {
+		// if detailErr, create results for each
+		// EntityID anyway, just make it an "error" result
+		detail, detailErr := getStatDetail(details, stat)
+
 		for _, id := range sr.EntityIDs {
-			// TODO - get threshold from somewhere
-			threshold := 90
-			results = append(results, statResult{
-				entityID:  id,
-				Stat:      stat,
-				Values:    []int{40, 27, 27, 34, 40, 90, 89, 50, 40, 30},
-				Capacity:  100,
-				Threshold: threshold,
-				Error:     "",
-			})
+
+			// if no StatDetails object was found for
+			// this stat, create an error StatResult
+			if detailErr != nil {
+				results = append(results, StatResult{
+					entityID: id,
+					Stat:     stat,
+					Error:    fmt.Sprintf("Invalid stat %s for entity %s", stat, entity),
+				})
+			} else {
+				values := []int{40, 27, 27, 34, 40, 90, 89, 50, 40, 30}
+				capacity := 100
+				threshold, _ := applyThreshold(detail.Threshold, capacity)
+
+				results = append(results, StatResult{
+					entityID:  id,
+					Stat:      stat,
+					Values:    values,
+					Capacity:  capacity,
+					Threshold: threshold,
+				})
+			}
 		}
 	}
 	return results, nil
@@ -137,7 +185,7 @@ var defaultResolution, _ = time.ParseDuration("5m")
 
 // creates a new stat request from
 // a Values map, defaults values, and validates them
-func newStatRequest(entity string, query url.Values) (sr *statRequest, err error) {
+func newStatRequest(entity string, query url.Values) (sr *StatRequest, err error) {
 	// required fields
 	stats, ok := query["stat"]
 	if !ok || len(stats) == 0 {
@@ -196,7 +244,7 @@ func newStatRequest(entity string, query url.Values) (sr *statRequest, err error
 		}
 	}
 
-	sr = &statRequest{
+	sr = &StatRequest{
 		Stats:      stats,
 		EntityIDs:  ids,
 		Start:      start,
@@ -246,14 +294,14 @@ func restGetStats(w *rest.ResponseWriter, r *rest.Request, ctx *requestContext) 
 		return
 	}
 
-	results, err := statInfo.fetch(sr)
+	results, err := statInfo.fetch(sr, statInfo)
 	if err != nil {
 		restBadRequest(w, fmt.Errorf("Error fetching stats for %s: %s", entity, err))
 		return
 	}
 
 	// key results by entityID
-	response := make(map[string][]statResult)
+	response := make(map[string][]StatResult)
 	for _, result := range results {
 		response[result.entityID] = append(response[result.entityID], result)
 	}
