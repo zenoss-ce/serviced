@@ -32,48 +32,6 @@ func msToTime(ms string) (time.Time, error) {
 	return time.Unix(0, msInt*int64(time.Millisecond)), nil
 }
 
-type statMetadata struct {
-	StatID string
-	Label  string
-	Unit   string
-}
-
-var hostsMetadata = []statMetadata{
-	{"mem", "Memory", "B"},
-	{"cpu", "CPU", "pct"},
-	{"docker_storage", "Docker Storage", "B"},
-}
-
-var mastersMetadata = []statMetadata{
-	{"mem", "Memory", "B"},
-	{"cpu", "CPU", "pct"},
-	{"docker_storage", "Docker Storage", "B"},
-	{"dfs_storage", "DFS Storage", "B"},
-}
-
-var backupsMetadata = []statMetadata{
-	{"size", "Size", "B"},
-}
-
-var poolsMetadata = []statMetadata{
-	{"mem", "Memory", "B"},
-	{"cpu", "CPU", "pct"},
-}
-
-var isvcsMetadata = []statMetadata{
-	{"mem", "Memory", "B"},
-	{"cpu", "CPU", "pct"},
-	{"size", "Size", "B"},
-}
-
-var availableMetadatas = map[string][]statMetadata{
-	"hosts":   hostsMetadata,
-	"masters": mastersMetadata,
-	"backups": backupsMetadata,
-	"pools":   poolsMetadata,
-	"isvcs":   isvcsMetadata,
-}
-
 // statRequest is a validated and defaulted
 // request for stats
 type statRequest struct {
@@ -96,28 +54,81 @@ type statResult struct {
 	Error     string
 }
 
-// statGetter is function that, given a statRequest,
+// statFetcher is function that, given a statRequest,
 // can produce an array of statResults
-type statGetter func(*statRequest) ([]statResult, error)
+type statFetcher func(*statRequest) ([]statResult, error)
 
-func demoStatGetter(sr *statRequest) (results []statResult, err error) {
+// StatDetails provides details about an available stat
+type StatDetails struct {
+	StatID string
+	Label  string
+	Unit   string
+}
+
+// StatInfo provides a way to describe available
+// stats and how to get them
+type StatInfo struct {
+	details []StatDetails
+	fetch   statFetcher
+}
+
+var availableStats = map[string]StatInfo{
+	"hosts": StatInfo{
+		[]StatDetails{
+			{"mem", "Memory", "B"},
+			{"cpu", "CPU", "pct"},
+			{"docker_storage", "Docker Storage", "B"},
+		},
+		demoStatFetcher,
+	},
+	"masters": StatInfo{
+		[]StatDetails{
+			{"mem", "Memory", "B"},
+			{"cpu", "CPU", "pct"},
+			{"docker_storage", "Docker Storage", "B"},
+			{"dfs_storage", "DFS Storage", "B"},
+		},
+		demoStatFetcher,
+	},
+	"backups": StatInfo{
+		[]StatDetails{
+			{"size", "Size", "B"},
+		},
+		demoStatFetcher,
+	},
+	"pools": StatInfo{
+		[]StatDetails{
+			{"mem", "Memory", "B"},
+			{"cpu", "CPU", "pct"},
+		},
+		demoStatFetcher,
+	},
+	"isvcs": StatInfo{
+		[]StatDetails{
+			{"mem", "Memory", "B"},
+			{"cpu", "CPU", "pct"},
+			{"size", "Size", "B"},
+		},
+		demoStatFetcher,
+	},
+}
+
+func demoStatFetcher(sr *statRequest) (results []statResult, err error) {
 	for _, stat := range sr.Stats {
 		for _, id := range sr.EntityIDs {
+			// TODO - get threshold from somewhere
+			threshold := 90
 			results = append(results, statResult{
 				entityID:  id,
 				Stat:      stat,
 				Values:    []int{40, 27, 27, 34, 40, 90, 89, 50, 40, 30},
 				Capacity:  100,
-				Threshold: 90,
+				Threshold: threshold,
 				Error:     "",
 			})
 		}
 	}
 	return results, nil
-}
-
-var availableStatGetters = map[string]statGetter{
-	"hosts": demoStatGetter,
 }
 
 // TODO - configurable defaults?
@@ -203,14 +214,14 @@ func restGetStatsMeta(w *rest.ResponseWriter, r *rest.Request, ctx *requestConte
 		return
 	}
 
-	metadata, ok := availableMetadatas[entity]
+	statInfo, ok := availableStats[entity]
 	if !ok {
-		restBadRequest(w, fmt.Errorf("No stat metadata for entity %s", entity))
+		restBadRequest(w, fmt.Errorf("No stat info for entity %s", entity))
 		return
 	}
 
-	glog.V(4).Infof("restGetStatsMeta: entity %s, metadata: %#v", entity, metadata)
-	writeJSON(w, metadata, 200)
+	glog.V(4).Infof("restGetStatsMeta: entity %s, details: %#v", entity, statInfo.details)
+	writeJSON(w, statInfo.details, 200)
 }
 
 func restGetStats(w *rest.ResponseWriter, r *rest.Request, ctx *requestContext) {
@@ -229,13 +240,13 @@ func restGetStats(w *rest.ResponseWriter, r *rest.Request, ctx *requestContext) 
 		return
 	}
 
-	getter, ok := availableStatGetters[entity]
+	statInfo, ok := availableStats[entity]
 	if !ok {
-		restBadRequest(w, fmt.Errorf("Unable to fetch stats for %s", entity))
+		restBadRequest(w, fmt.Errorf("No stat info for entity %s", entity))
 		return
 	}
 
-	results, err := getter(sr)
+	results, err := statInfo.fetch(sr)
 	if err != nil {
 		restBadRequest(w, fmt.Errorf("Error fetching stats for %s: %s", entity, err))
 		return
