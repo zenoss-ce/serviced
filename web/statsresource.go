@@ -14,16 +14,30 @@
 package web
 
 import (
+	"errors"
 	"fmt"
 	"net/url"
 	"strconv"
 	"time"
 
-	"github.com/zenoss/glog"
 	"github.com/zenoss/go-json-rest"
 
 	"github.com/control-center/serviced/web/statsapi"
 )
+
+// StatRequestError is created when there
+// is an error creating a StatRequest
+type StatRequestError struct {
+	Message string
+}
+
+// ErrMissingEntityName is created when
+// an entity name is required but is empty
+var ErrMissingEntityName = errors.New("entity name cannot be empty")
+
+func (err StatRequestError) Error() string {
+	return err.Message
+}
 
 // TODO - configurable defaults?
 var defaultDuration, _ = time.ParseDuration("1h")
@@ -42,27 +56,35 @@ func msToTime(ms string) (time.Time, error) {
 
 // newStatRequest creates a new stat request from
 // a Values map, defaults values, and validates them
-func newStatRequest(entity string, query url.Values) (sr *statsapi.StatRequest, err error) {
+func newStatRequest(entity string, query url.Values) (*statsapi.StatRequest, error) {
 	// required fields
 	stats, ok := query["stat"]
 	if !ok || len(stats) == 0 {
-		return nil, fmt.Errorf("at least one stat is required")
+		return nil, &StatRequestError{
+			Message: "at least one stat is required",
+		}
 	}
 
 	// optional fields
 	var end time.Time
 	if endStr := query.Get("end"); endStr != "" {
+		var err error
 		end, err = msToTime(endStr)
 		if err != nil {
-			return nil, fmt.Errorf("invalid end time %s", endStr)
+			return nil, &StatRequestError{
+				Message: fmt.Sprintf("invalid end time %s", endStr),
+			}
 		}
 	}
 
 	var start time.Time
 	if startStr := query.Get("start"); startStr != "" {
+		var err error
 		start, err = msToTime(startStr)
 		if err != nil {
-			return nil, fmt.Errorf("invalid start time %s", startStr)
+			return nil, &StatRequestError{
+				Message: fmt.Sprintf("invalid start time %s", startStr),
+			}
 		}
 	}
 
@@ -79,25 +101,27 @@ func newStatRequest(entity string, query url.Values) (sr *statsapi.StatRequest, 
 	}
 
 	if !end.After(start) {
-		return nil, fmt.Errorf("end time must be after start time")
+		return nil, &StatRequestError{
+			Message: fmt.Sprintf("end time must be after start time"),
+		}
 	}
 
-	ids, ok := query["id"]
-	if !ok {
-		ids = []string{}
-	}
+	ids, _ := query["id"]
 
 	var res time.Duration
 	if resStr := query.Get("resolution"); resStr == "" {
 		res = defaultResolution
 	} else {
+		var err error
 		res, err = time.ParseDuration(resStr)
 		if err != nil {
-			return nil, fmt.Errorf("invalid resolution %s", resStr)
+			return nil, &StatRequestError{
+				Message: fmt.Sprintf("invalid resolution %s", resStr),
+			}
 		}
 	}
 
-	sr = &statsapi.StatRequest{
+	sr := statsapi.StatRequest{
 		Stats:      stats,
 		EntityIDs:  ids,
 		Start:      start,
@@ -105,13 +129,13 @@ func newStatRequest(entity string, query url.Values) (sr *statsapi.StatRequest, 
 		Resolution: res,
 	}
 
-	return sr, nil
+	return &sr, nil
 }
 
 func restGetStatsMeta(w *rest.ResponseWriter, r *rest.Request, ctx *requestContext) {
 	entity, err := url.QueryUnescape(r.PathParam("entity"))
 	if err != nil {
-		restBadRequest(w, fmt.Errorf("Missing entity name"))
+		restBadRequest(w, ErrMissingEntityName)
 		return
 	}
 
@@ -121,14 +145,13 @@ func restGetStatsMeta(w *rest.ResponseWriter, r *rest.Request, ctx *requestConte
 		return
 	}
 
-	glog.V(4).Infof("restGetStatsMeta: entity %s, details: %#v", entity, statInfo.Details)
 	writeJSON(w, statInfo.Details, 200)
 }
 
 func restGetStats(w *rest.ResponseWriter, r *rest.Request, ctx *requestContext) {
 	entity, err := url.QueryUnescape(r.PathParam("entity"))
 	if err != nil {
-		restBadRequest(w, fmt.Errorf("Missing entity name"))
+		restBadRequest(w, ErrMissingEntityName)
 		return
 	}
 
@@ -149,7 +172,7 @@ func restGetStats(w *rest.ResponseWriter, r *rest.Request, ctx *requestContext) 
 
 	results, err := statInfo.Fetch(sr, statInfo)
 	if err != nil {
-		restBadRequest(w, fmt.Errorf("Error fetching stats for %s: %s", entity, err))
+		restBadRequest(w, fmt.Errorf("error fetching stats for %s: %s", entity, err))
 		return
 	}
 

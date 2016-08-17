@@ -14,11 +14,38 @@
 package statsapi
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
 	"time"
 )
+
+// ErrMissingThreshold occurs when a
+// threshold is necessary by absent
+var ErrMissingThreshold = errors.New("threshold cannot be empty")
+
+// MissingStatInfo occurs when a StatInfo
+// is requested but the entity is not in
+// the list
+type MissingStatInfo struct {
+	Message string
+}
+
+func (err MissingStatInfo) Error() string {
+	return err.Message
+}
+
+// MissingStatDetails occurs when a StatDetails
+// is requested but the entity is not in
+// the list
+type MissingStatDetails struct {
+	Message string
+}
+
+func (err MissingStatDetails) Error() string {
+	return err.Message
+}
 
 // StatRequest is a validated and defaulted
 // request for stats
@@ -55,12 +82,12 @@ type StatDetails struct {
 	StatID    string
 	Label     string
 	Unit      string
-	Threshold string
+	Threshold string `json:"-"`
 }
 
 // StatFetcher is function that, given a StatRequest,
 // can produce an array of StatResults
-type StatFetcher func(*StatRequest, StatInfo) ([]StatResult, error)
+type StatFetcher func(*StatRequest, *StatInfo) ([]StatResult, error)
 
 // availableStats is a registry of StatInfo, keyed by
 // entity name
@@ -68,12 +95,14 @@ var availableStats = map[string]StatInfo{}
 
 // GetStatInfo looksup StatInfo object in
 // availableStats for the given entity
-func GetStatInfo(entity string) (StatInfo, error) {
+func GetStatInfo(entity string) (*StatInfo, error) {
 	statInfo, ok := availableStats[entity]
 	if !ok {
-		return StatInfo{}, fmt.Errorf("No stat info for entity %s", entity)
+		return nil, &MissingStatInfo{
+			Message: fmt.Sprintf("No stat info for entity %s", entity),
+		}
 	}
-	return statInfo, nil
+	return &statInfo, nil
 }
 
 // addStatInfo allows new StatInfo objects
@@ -87,22 +116,24 @@ func addStatInfo(entity string, s StatInfo) error {
 // getStatDetail searches through a StatInfo for
 // the StatDetails object that matches the provided
 // stat id
-func getStatDetail(details []StatDetails, statID string) (StatDetails, error) {
+func getStatDetail(details []StatDetails, statID string) (*StatDetails, error) {
 	for _, i := range details {
 		if i.StatID == statID {
-			return i, nil
+			return &i, nil
 		}
 	}
-	return StatDetails{}, fmt.Errorf("Could not find stat %s", statID)
+	return nil, &MissingStatDetails{
+		Message: fmt.Sprintf("No stat detail for stat %s", statID),
+	}
 }
 
-// applyThreshold takes a threshold string and a value to apply it
-// to. If the threshold is a percent, it is applied to the value
+// applyThreshold takes a threshold and a value to apply to.
+// If the threshold is a percent, it is applied to the value
 // and the result returned. If the threshold is a number, it is
 // parsed to int and returned. Eg: 100% or 872891
 func applyThreshold(threshold string, val int) (int, error) {
 	if threshold == "" {
-		return 0, fmt.Errorf("Threshold is empty")
+		return 0, ErrMissingThreshold
 	}
 
 	// apply threshold percentage to total val

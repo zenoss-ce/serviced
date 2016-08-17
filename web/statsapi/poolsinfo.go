@@ -37,7 +37,7 @@ func init() {
 	})
 }
 
-func poolsStatFetcher(sr *StatRequest, info StatInfo) (results []StatResult, err error) {
+func poolsStatFetcher(sr *StatRequest, info *StatInfo) (results []StatResult, err error) {
 	entity := "pools"
 	details := info.Details
 
@@ -51,7 +51,6 @@ func poolsStatFetcher(sr *StatRequest, info StatInfo) (results []StatResult, err
 			// TODO - go somewhere and fetch values, capacity
 			values := []int{40, 27, 27, 34, 40, 90, 89, 50, 40, 30}
 			capacity := 100
-			threshold, thresholdErr := applyThreshold(detail.Threshold, capacity)
 
 			if detailErr != nil {
 				results = append(results, StatResult{
@@ -59,21 +58,26 @@ func poolsStatFetcher(sr *StatRequest, info StatInfo) (results []StatResult, err
 					Stat:     stat,
 					Error:    fmt.Sprintf("Invalid stat %s for entity %s", stat, entity),
 				})
-			} else if thresholdErr != nil {
+				continue
+			}
+
+			threshold, err := applyThreshold(detail.Threshold, capacity)
+			if err != nil {
 				results = append(results, StatResult{
 					EntityID: id,
 					Stat:     stat,
 					Error:    fmt.Sprintf("Could not apply threshold %s", detail.Threshold),
 				})
-			} else {
-				results = append(results, StatResult{
-					EntityID:  id,
-					Stat:      stat,
-					Values:    values,
-					Capacity:  capacity,
-					Threshold: threshold,
-				})
+				continue
 			}
+
+			results = append(results, StatResult{
+				EntityID:  id,
+				Stat:      stat,
+				Values:    values,
+				Capacity:  capacity,
+				Threshold: threshold,
+			})
 		}
 	}
 	return results, nil
