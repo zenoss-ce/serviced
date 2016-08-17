@@ -50,19 +50,16 @@ func newStatRequest(entity string, query url.Values) (sr *statsapi.StatRequest, 
 	}
 
 	// optional fields
-	endStr := query.Get("end")
-	startStr := query.Get("start")
 	var end time.Time
-	var start time.Time
-
-	// parse and validate start and end if present
-	if endStr != "" {
+	if endStr := query.Get("end"); endStr != "" {
 		end, err = msToTime(endStr)
 		if err != nil {
 			return nil, fmt.Errorf("invalid end time %s", endStr)
 		}
 	}
-	if startStr != "" {
+
+	var start time.Time
+	if startStr := query.Get("start"); startStr != "" {
 		start, err = msToTime(startStr)
 		if err != nil {
 			return nil, fmt.Errorf("invalid start time %s", startStr)
@@ -70,14 +67,14 @@ func newStatRequest(entity string, query url.Values) (sr *statsapi.StatRequest, 
 	}
 
 	// if start, end, or both are missing, create them
-	if endStr == "" && startStr == "" {
+	if end.IsZero() && start.IsZero() {
 		end = time.Now()
 		start = end.Add(-defaultDuration)
-	} else if endStr == "" {
+	} else if end.IsZero() {
 		// NOTE - this can produce an end time
 		// in the future
 		end = start.Add(defaultDuration)
-	} else if startStr == "" {
+	} else if start.IsZero() {
 		start = end.Add(-defaultDuration)
 	}
 
@@ -90,9 +87,8 @@ func newStatRequest(entity string, query url.Values) (sr *statsapi.StatRequest, 
 		ids = []string{}
 	}
 
-	resStr := query.Get("resolution")
 	var res time.Duration
-	if resStr == "" {
+	if resStr := query.Get("resolution"); resStr == "" {
 		res = defaultResolution
 	} else {
 		res, err = time.ParseDuration(resStr)
