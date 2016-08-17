@@ -1,4 +1,4 @@
-// Copyright 2014 The Serviced Authors.
+// Copyright 2016 The Serviced Authors.
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -42,9 +42,13 @@ type StatResult struct {
 	Error     string
 }
 
-// StatFetcher is function that, given a StatRequest,
-// can produce an array of StatResults
-type StatFetcher func(*StatRequest, StatInfo) ([]StatResult, error)
+// StatInfo provides a way to describe available
+// stats and how to get them. This serves as the
+// interface for adding more stats and endpoints
+type StatInfo struct {
+	Details []StatDetails
+	Fetch   StatFetcher
+}
 
 // StatDetails provides details about an available stat
 type StatDetails struct {
@@ -54,63 +58,30 @@ type StatDetails struct {
 	Threshold string
 }
 
-// StatInfo provides a way to describe available
-// stats and how to get them. This serves as the
-// interface for adding more stats and endpoints
-type StatInfo struct {
-	Details []StatDetails
-	Fetch   StatFetcher
+// StatFetcher is function that, given a StatRequest,
+// can produce an array of StatResults
+type StatFetcher func(*StatRequest, StatInfo) ([]StatResult, error)
+
+// availableStats is a registry of StatInfo, keyed by
+// entity name
+var availableStats = map[string]StatInfo{}
+
+// GetStatInfo looksup StatInfo object in
+// availableStats for the given entity
+func GetStatInfo(entity string) (StatInfo, error) {
+	statInfo, ok := availableStats[entity]
+	if !ok {
+		return StatInfo{}, fmt.Errorf("No stat info for entity %s", entity)
+	}
+	return statInfo, nil
 }
 
-var hostsInfo = StatInfo{
-	[]StatDetails{
-		{"mem", "Memory", "B", "90%"},
-		{"cpu", "CPU", "pct", "90%"},
-		{"docker_storage", "Docker Storage", "B", "90%"},
-	},
-	demoStatFetcher,
-}
-
-var mastersInfo = StatInfo{
-	[]StatDetails{
-		{"mem", "Memory", "B", "90%"},
-		{"cpu", "CPU", "pct", "90%"},
-		{"docker_storage", "Docker Storage", "B", "90%"},
-		{"dfs_storage", "DFS Storage", "B", "90%"},
-	},
-	demoStatFetcher,
-}
-
-var backupsInfo = StatInfo{
-	[]StatDetails{
-		{"size", "Size", "B", "90%"},
-	},
-	demoStatFetcher,
-}
-
-var poolsInfo = StatInfo{
-	[]StatDetails{
-		{"mem", "Memory", "B", "90%"},
-		{"cpu", "CPU", "pct", "90%"},
-	},
-	demoStatFetcher,
-}
-
-var isvcsInfo = StatInfo{
-	[]StatDetails{
-		{"mem", "Memory", "B", "90%"},
-		{"cpu", "CPU", "pct", "90%"},
-		{"size", "Size", "B", "90%"},
-	},
-	demoStatFetcher,
-}
-
-var availableStats = map[string]StatInfo{
-	"hosts":   hostsInfo,
-	"masters": mastersInfo,
-	"backups": backupsInfo,
-	"pools":   poolsInfo,
-	"isvcs":   isvcsInfo,
+// addStatInfo allows new StatInfo objects
+// to be added to availableStats, keyed by
+// entity name (eg: hosts, masters)
+func addStatInfo(entity string, s StatInfo) error {
+	availableStats[entity] = s
+	return nil
 }
 
 // getStatDetail searches through a StatInfo for
@@ -125,6 +96,10 @@ func getStatDetail(details []StatDetails, statID string) (StatDetails, error) {
 	return StatDetails{}, fmt.Errorf("Could not find stat %s", statID)
 }
 
+// applyThreshold takes a threshold string and a value to apply it
+// to. If the threshold is a percent, it is applied to the value
+// and the result returned. If the threshold is a number, it is
+// parsed to int and returned. Eg: 100% or 872891
 func applyThreshold(threshold string, val int) (int, error) {
 	if threshold == "" {
 		return 0, fmt.Errorf("Threshold is empty")
@@ -137,6 +112,7 @@ func applyThreshold(threshold string, val int) (int, error) {
 		if err != nil {
 			return 0, err
 		}
+		// TODO - is int sufficient precision?
 		result := int(float64(percent) * 0.01 * float64(val))
 		return result, nil
 	}
@@ -148,57 +124,4 @@ func applyThreshold(threshold string, val int) (int, error) {
 	}
 	return result, nil
 
-}
-
-func demoStatFetcher(sr *StatRequest, info StatInfo) (results []StatResult, err error) {
-	// NOTE - pretend request is for hosts
-	entity := "hosts"
-	details := info.Details
-
-	for _, stat := range sr.Stats {
-		// if detailErr, create results for each
-		// EntityID anyway, just make it an "error" result
-		detail, detailErr := getStatDetail(details, stat)
-
-		for _, id := range sr.EntityIDs {
-
-			// TODO - go somewhere and fetch values, capacity
-			values := []int{40, 27, 27, 34, 40, 90, 89, 50, 40, 30}
-			capacity := 100
-			threshold, thresholdErr := applyThreshold(detail.Threshold, capacity)
-
-			if detailErr != nil {
-				results = append(results, StatResult{
-					EntityID: id,
-					Stat:     stat,
-					Error:    fmt.Sprintf("Invalid stat %s for entity %s", stat, entity),
-				})
-			} else if thresholdErr != nil {
-				results = append(results, StatResult{
-					EntityID: id,
-					Stat:     stat,
-					Error:    fmt.Sprintf("Could not apply threshold %s", detail.Threshold),
-				})
-			} else {
-				results = append(results, StatResult{
-					EntityID:  id,
-					Stat:      stat,
-					Values:    values,
-					Capacity:  capacity,
-					Threshold: threshold,
-				})
-			}
-		}
-	}
-	return results, nil
-}
-
-// GetStatInfo returns a StatInfo object
-// for the given entity
-func GetStatInfo(entity string) (StatInfo, error) {
-	statInfo, ok := availableStats[entity]
-	if !ok {
-		return StatInfo{}, fmt.Errorf("No stat info for entity %s", entity)
-	}
-	return statInfo, nil
 }

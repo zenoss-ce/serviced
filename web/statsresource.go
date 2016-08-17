@@ -1,4 +1,4 @@
-// Copyright 2014 The Serviced Authors.
+// Copyright 2016 The Serviced Authors.
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -29,6 +29,8 @@ import (
 var defaultDuration, _ = time.ParseDuration("1h")
 var defaultResolution, _ = time.ParseDuration("5m")
 
+// msToTime takes milliseconds since epoch and
+// returns a time object
 func msToTime(ms string) (time.Time, error) {
 	msInt, err := strconv.ParseInt(ms, 10, 64)
 	if err != nil {
