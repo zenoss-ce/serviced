@@ -47,6 +47,7 @@ import (
 	"github.com/control-center/serviced/scheduler"
 	"github.com/control-center/serviced/shell"
 	"github.com/control-center/serviced/stats"
+	"github.com/control-center/serviced/statsapi"
 	"github.com/control-center/serviced/utils"
 	"github.com/control-center/serviced/validation"
 	"github.com/control-center/serviced/volume"
@@ -401,7 +402,8 @@ func (d *daemon) startMaster() (err error) {
 	}
 
 	d.facade = d.initFacade()
-
+	d.facade.SetMasterHost(thisHost)
+	
 	if d.cpDao, err = d.initDAO(); err != nil {
 		glog.Errorf("Could not initialize DAO: %s", err)
 		return err
@@ -745,6 +747,16 @@ func initMetricsClient() *metrics.Client {
 	return client
 }
 
+func initStatsApiClient() *statsapi.Client {
+	addr := fmt.Sprintf("http://%s:8888", localhost)
+	client, err := statsapi.NewClient(addr)
+	if err != nil {
+		glog.Errorf("Unable to initiate metrics client to %s", addr)
+		return nil
+	}
+	return client
+}
+
 func (d *daemon) initFacade() *facade.Facade {
 	f := facade.New()
 	zzk := facade.GetFacadeZZK(f)
@@ -759,6 +771,8 @@ func (d *daemon) initFacade() *facade.Facade {
 	f.SetHealthCache(d.hcache)
 	client := initMetricsClient()
 	f.SetMetricsClient(client)
+	statsApiClient := initStatsApiClient()
+	f.SetStatsApiClient(statsApiClient)
 	return f
 }
 

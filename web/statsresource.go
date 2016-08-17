@@ -22,7 +22,7 @@ import (
 
 	"github.com/zenoss/go-json-rest"
 
-	"github.com/control-center/serviced/web/statsapi"
+	"github.com/control-center/serviced/statsapi"
 )
 
 // StatRequestError is created when there
@@ -121,7 +121,8 @@ func newStatRequest(entity string, query url.Values) (*statsapi.StatRequest, err
 		}
 	}
 
-	sr := statsapi.StatRequest{
+	sr = &statsapi.StatRequest{
+		EntityType: entity,
 		Stats:      stats,
 		EntityIDs:  ids,
 		Start:      start,
@@ -139,7 +140,8 @@ func restGetStatsMeta(w *rest.ResponseWriter, r *rest.Request, ctx *requestConte
 		return
 	}
 
-	statInfo, err := statsapi.GetStatInfo(entity)
+	sr := &statsapi.StatRequest{EntityType: entity}
+	statInfo, err := ctx.getFacade().GetStatsMetadata(sr)
 	if err != nil {
 		restBadRequest(w, err)
 		return
@@ -164,13 +166,8 @@ func restGetStats(w *rest.ResponseWriter, r *rest.Request, ctx *requestContext) 
 		return
 	}
 
-	statInfo, err := statsapi.GetStatInfo(entity)
-	if err != nil {
-		restBadRequest(w, err)
-		return
-	}
+	results, err := ctx.getFacade().GetStats(sr)
 
-	results, err := statInfo.Fetch(sr, statInfo)
 	if err != nil {
 		restBadRequest(w, fmt.Errorf("error fetching stats for %s: %s", entity, err))
 		return

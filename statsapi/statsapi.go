@@ -50,11 +50,12 @@ func (err MissingStatDetails) Error() string {
 // StatRequest is a validated and defaulted
 // request for stats
 type StatRequest struct {
-	EntityIDs  []string
-	Stats      []string
-	Start      time.Time
-	End        time.Time
-	Resolution time.Duration
+	EntityType  string
+	EntityIDs   []string
+	Stats       []string
+	Start       time.Time
+	End         time.Time
+	Resolution  time.Duration
 }
 
 // StatResult contains stat values as well

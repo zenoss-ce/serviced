@@ -19,6 +19,7 @@ import (
 	"github.com/control-center/serviced/dao"
 	"github.com/control-center/serviced/datastore"
 	"github.com/control-center/serviced/health"
+	"github.com/control-center/serviced/statsapi"
 
 	"github.com/control-center/serviced/domain/addressassignment"
 	"github.com/control-center/serviced/domain/host"
@@ -114,4 +115,8 @@ type FacadeInterface interface {
 	GetHostInstances(ctx datastore.Context, hostid string) ([]service.Instance, error)
 
 	GetServiceInstances(ctx datastore.Context, serviceid string) ([]service.Instance, error)
+
+	GetStatsMetadata(sr *statsapi.StatRequest) (result statsapi.StatInfo, err error)
+
+	GetStats(sr *statsapi.StatRequest) (results []statsapi.StatResult, err error)
 }
