@@ -43,6 +43,15 @@ func (err StatRequestError) Error() string {
 var defaultDuration, _ = time.ParseDuration("1h")
 var defaultResolution, _ = time.ParseDuration("5m")
 
+// statsResponse is the response struct that is
+// serialized and sent to the client
+type statsResponse struct {
+	Start      int                              `json:"start"`
+	End        int                              `json:"end"`
+	Resolution time.Duration                    `json:"resolution"`
+	Results    map[string][]statsapi.StatResult `json:"results"`
+}
+
 // msToTime takes milliseconds since epoch and
 // returns a time object
 func msToTime(ms string) (time.Time, error) {
@@ -52,6 +61,10 @@ func msToTime(ms string) (time.Time, error) {
 	}
 
 	return time.Unix(0, msInt*int64(time.Millisecond)), nil
+}
+
+func timeToMS(t time.Time) int {
+	return int(t.UnixNano() / 1000000)
 }
 
 // newStatRequest creates a new stat request from
@@ -174,10 +187,15 @@ func restGetStats(w *rest.ResponseWriter, r *rest.Request, ctx *requestContext) 
 	}
 
 	// key results by EntityID
-	response := make(map[string][]statsapi.StatResult)
+	byID := make(map[string][]statsapi.StatResult)
 	for _, result := range results {
-		response[result.EntityID] = append(response[result.EntityID], result)
+		byID[result.EntityID] = append(byID[result.EntityID], result)
 	}
 
-	w.WriteJson(&response)
+	w.WriteJson(&statsResponse{
+		Start:      timeToMS(sr.Start),
+		End:        timeToMS(sr.End),
+		Resolution: sr.Resolution,
+		Results:    byID,
+	})
 }

@@ -50,12 +50,12 @@ func (err MissingStatDetails) Error() string {
 // StatRequest is a validated and defaulted
 // request for stats
 type StatRequest struct {
-	EntityType  string
-	EntityIDs   []string
-	Stats       []string
-	Start       time.Time
-	End         time.Time
-	Resolution  time.Duration
+	EntityType string
+	EntityIDs  []string
+	Stats      []string
+	Start      time.Time
+	End        time.Time
+	Resolution time.Duration
 }
 
 // StatResult contains stat values as well
@@ -63,11 +63,11 @@ type StatRequest struct {
 // specific stat
 type StatResult struct {
 	EntityID  string `json:"-"`
-	Stat      string
-	Values    []int
-	Threshold int
-	Capacity  int
-	Error     string
+	Stat      string `json:"stat"`
+	Values    []int  `json:"values"`
+	Threshold int    `json:"threshold"`
+	Capacity  int    `json:"capacity"`
+	Error     string `json:"error,omitempty"`
 }
 
 // StatInfo provides a way to describe available
