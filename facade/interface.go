@@ -116,7 +116,7 @@ type FacadeInterface interface {
 
 	GetServiceInstances(ctx datastore.Context, serviceid string) ([]service.Instance, error)
 
-	GetStatsMetadata(sr *statsapi.StatRequest) (result statsapi.StatInfo, err error)
+	GetStatsMetadata(sr *statsapi.StatRequest) (result *statsapi.StatInfo, err error)
 
 	GetStats(sr *statsapi.StatRequest) (results []statsapi.StatResult, err error)
 }

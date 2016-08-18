@@ -121,7 +121,7 @@ func newStatRequest(entity string, query url.Values) (*statsapi.StatRequest, err
 		}
 	}
 
-	sr = &statsapi.StatRequest{
+	sr := &statsapi.StatRequest{
 		EntityType: entity,
 		Stats:      stats,
 		EntityIDs:  ids,
@@ -130,7 +130,7 @@ func newStatRequest(entity string, query url.Values) (*statsapi.StatRequest, err
 		Resolution: res,
 	}
 
-	return &sr, nil
+	return sr, nil
 }
 
 func restGetStatsMeta(w *rest.ResponseWriter, r *rest.Request, ctx *requestContext) {

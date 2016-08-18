@@ -14,32 +14,37 @@
 package facade
 
 import (
-    "errors"
-    "fmt"
-    "github.com/control-center/serviced/statsapi"
+	"errors"
+	"fmt"
+	"github.com/control-center/serviced/statsapi"
 )
 
 // Retrieve Stats metadata for a specific entity
-func (f *Facade) GetStatsMetadata(sr *statsapi.StatRequest) (result statsapi.StatInfo, err error) {
-    return statsapi.GetStatInfo(sr.EntityType)
+func (f *Facade) GetStatsMetadata(sr *statsapi.StatRequest) (result *statsapi.StatInfo, err error) {
+	return statsapi.GetStatInfo(sr.EntityType)
 }
 
 // Get Stats for entity defined in StatRequest
 func (f *Facade) GetStats(sr *statsapi.StatRequest) (results []statsapi.StatResult, err error) {
 
-    statInfo, err := statsapi.GetStatInfo(sr.EntityType)
-    if err != nil {
-        return nil, errors.New(fmt.Sprintf("Unknown Entity: %s", sr.EntityType))
-    }
+	statInfo, err := statsapi.GetStatInfo(sr.EntityType)
+	if err != nil {
+		return nil, errors.New(fmt.Sprintf("Unknown Entity: %s", sr.EntityType))
+	}
 
-    switch sr.EntityType {
-    case "masters":
-        sr.EntityIDs = []string{f.ccMasterHost.ID}
-        results, err = statInfo.Fetch(sr, statInfo)
-    default:
-        return nil, errors.New(fmt.Sprintf("Entity Stat not implemented: %s", sr.EntityType))
-    }
+	switch sr.EntityType {
+	case "masters":
+		sr.EntityIDs = []string{f.ccMasterHost.ID}
+		results, err = statInfo.Fetch(sr, statInfo)
 
-    return results, err
+	// NOTE - this is a demo stat getter and does
+	// not actually fetch hosts
+	case "hosts":
+		results, err = statInfo.Fetch(sr, statInfo)
+
+	default:
+		return nil, errors.New(fmt.Sprintf("Entity Stat not implemented: %s", sr.EntityType))
+	}
+
+	return results, err
 }
-
