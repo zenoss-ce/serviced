@@ -22,7 +22,6 @@ import (
 	"github.com/control-center/serviced/domain/servicetemplate"
 	"github.com/control-center/serviced/health"
 	"github.com/control-center/serviced/metrics"
-	"github.com/control-center/serviced/statsapi"
 )
 
 // assert interface
@@ -51,7 +50,6 @@ type Facade struct {
 	dfs           dfs.DFS
 	hcache        *health.HealthStatusCache
 	metricsClient *metrics.Client
-	statsClient   *statsapi.Client
 	ccMasterHost  *host.Host
 
 	isvcsPath string
@@ -77,6 +75,6 @@ func (f *Facade) SetMetricsClient(client *metrics.Client) { f.metricsClient = cl
 
 func (f *Facade) SetIsvcsPath(path string) { f.isvcsPath = path }
 
-func (f *Facade) SetStatsApiClient(client *statsapi.Client) { f.statsClient = client }
-
 func (f *Facade) SetMasterHost(h *host.Host) { f.ccMasterHost = h }
+
+func (f *Facade) GetQueryServiceClient() (client *metrics.Client) { return f.metricsClient }

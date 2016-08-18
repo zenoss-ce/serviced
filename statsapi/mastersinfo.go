@@ -49,7 +49,7 @@ func init() {
 	})
 }
 
-func mastersStatFetcher(sr *StatRequest, info *StatInfo) (results []StatResult, err error) {
+func mastersStatFetcherMock(sr *StatRequest, info *StatInfo) (results []StatResult, err error) {
 	entity := "masters"
 	details := info.Details
 
@@ -93,4 +93,16 @@ func mastersStatFetcher(sr *StatRequest, info *StatInfo) (results []StatResult, 
 		}
 	}
 	return results, nil
+}
+
+// Build Query Service query from StatRequest to retrieve the requested stats for the
+// cc master host
+func mastersStatFetcher(sr *StatRequest, info *StatInfo) (results []StatResult, err error) {
+
+	// the query service client is accessible in sr.QueryServiceClient) for now,
+	// we need to decide if we want to pass it to the fetcher methods or if we should have
+	// a StatFetcher struct that contains a ref to the client and also has methods for each
+	// type of stats
+
+	return []StatResult{}, nil
 }

@@ -19,6 +19,7 @@ import (
 	"github.com/control-center/serviced/dao"
 	"github.com/control-center/serviced/datastore"
 	"github.com/control-center/serviced/health"
+	"github.com/control-center/serviced/metrics"
 	"github.com/control-center/serviced/statsapi"
 
 	"github.com/control-center/serviced/domain/addressassignment"
@@ -119,4 +120,6 @@ type FacadeInterface interface {
 	GetStatsMetadata(sr *statsapi.StatRequest) (result *statsapi.StatInfo, err error)
 
 	GetStats(sr *statsapi.StatRequest) (results []statsapi.StatResult, err error)
+
+	GetQueryServiceClient() (queryServiceClient *metrics.Client)
 }

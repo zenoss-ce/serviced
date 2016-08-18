@@ -32,6 +32,7 @@ func (f *Facade) GetStats(sr *statsapi.StatRequest) (results []statsapi.StatResu
 		return nil, errors.New(fmt.Sprintf("Unknown Entity: %s", sr.EntityType))
 	}
 
+	sr.QueryServiceClient = f.GetQueryServiceClient() // TEMP For now we stick it in the statRequest
 	switch sr.EntityType {
 	case "masters":
 		sr.EntityIDs = []string{f.ccMasterHost.ID}

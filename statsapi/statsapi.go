@@ -19,6 +19,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/control-center/serviced/metrics"
 )
 
 // ErrMissingThreshold occurs when a
@@ -50,12 +52,13 @@ func (err MissingStatDetails) Error() string {
 // StatRequest is a validated and defaulted
 // request for stats
 type StatRequest struct {
-	EntityType string
-	EntityIDs  []string
-	Stats      []string
-	Start      time.Time
-	End        time.Time
-	Resolution time.Duration
+	EntityType         string
+	EntityIDs          []string
+	Stats              []string
+	Start              time.Time
+	End                time.Time
+	Resolution         time.Duration
+	QueryServiceClient *metrics.Client // Temporary until we have a more solid design
 }
 
 // StatResult contains stat values as well
