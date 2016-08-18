@@ -197,6 +197,10 @@ func (c *Client) v2performanceQuery(opts V2PerformanceOptions) (*V2PerformanceDa
 	return &perfdata, nil
 }
 
+func (c *Client) PerformanceQuery(opts PerformanceOptions) (*PerformanceData, error) {
+	return c.performanceQuery(opts)
+}
+
 func (c *Client) V2performanceQuery(opts V2PerformanceOptions) (*V2PerformanceData, error) {
 	return c.v2performanceQuery(opts)
 }
