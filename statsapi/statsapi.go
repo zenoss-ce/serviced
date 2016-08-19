@@ -78,12 +78,12 @@ type StatRequest struct {
 // as other supporting information about a
 // specific stat
 type StatResult struct {
-	EntityID  string `json:"-"`
-	Stat      string `json:"stat"`
-	Values    []int  `json:"values"`
-	Threshold int    `json:"threshold"`
-	Capacity  int    `json:"capacity"`
-	Error     string `json:"error,omitempty"`
+	EntityID  string    `json:"-"`
+	Stat      string    `json:"stat"`
+	Values    []float64 `json:"values"`
+	Threshold int       `json:"threshold"`
+	Capacity  int       `json:"capacity"`
+	Error     string    `json:"error,omitempty"`
 }
 
 // StatInfo provides a way to describe available

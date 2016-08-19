@@ -61,7 +61,7 @@ func mastersStatFetcherMock(sr *StatRequest, info *StatInfo) (results []StatResu
 		for _, id := range sr.EntityIDs {
 
 			// TODO - go somewhere and fetch values, capacity
-			values := []int{40, 27, 27, 34, 40, 90, 89, 50, 40, 30}
+			values := []float64{40, 27, 27, 34, 40, 90, 89, 50, 40, 30}
 			capacity := 100
 
 			if detailErr != nil {
@@ -99,10 +99,14 @@ func mastersStatFetcherMock(sr *StatRequest, info *StatInfo) (results []StatResu
 // cc master host
 func mastersStatFetcher(sr *StatRequest, info *StatInfo) (results []StatResult, err error) {
 
-	// the query service client is accessible in sr.QueryServiceClient) for now,
-	// we need to decide if we want to pass it to the fetcher methods or if we should have
-	// a StatFetcher struct that contains a ref to the client and also has methods for each
-	// type of stats
+	// The query service client is accessible in sr.QueryServiceClient) for now, we may
+	// want to add a ref to it in the statsFacade
 
-	return []StatResult{}, nil
+	// 1 - Do we need to do validation here?
+
+	// 2 - Get the stats
+	sf := &statsFacade{QueryServiceClient: sr.QueryServiceClient} // This will be global
+	stats, err := sf.getHostStats(sr)
+
+	return stats, err
 }

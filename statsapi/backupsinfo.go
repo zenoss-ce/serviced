@@ -43,7 +43,7 @@ func backupsStatFetcher(sr *StatRequest, info *StatInfo) (results []StatResult, 
 		for _, id := range sr.EntityIDs {
 
 			// TODO - go somewhere and fetch values, capacity
-			values := []int{40, 27, 27, 34, 40, 90, 89, 50, 40, 30}
+			values := []float64{40, 27, 27, 34, 40, 90, 89, 50, 40, 30}
 			capacity := 100
 
 			if detailErr != nil {
