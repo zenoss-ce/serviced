@@ -152,7 +152,6 @@ func staticData(w *rest.ResponseWriter, r *rest.Request) {
 		fileToServe)
 }
 
-
 /*******************************************************************************
  *
  * Private helper functions

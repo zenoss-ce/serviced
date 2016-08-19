@@ -13,12 +13,14 @@
 
 // +build unit
 
-package statsapi
+package statsapi_test
 
 import (
 	"testing"
 
 	. "gopkg.in/check.v1"
+
+	. "github.com/control-center/serviced/statsapi"
 )
 
 func TestUtils(t *testing.T) { TestingT(t) }
@@ -42,7 +44,7 @@ func (s *StatsAPISuite) TestGetStatInfo(c *C) {
 		},
 	}
 
-	addStatInfo("karatehorses", info)
+	AddStatInfo("karatehorses", info)
 
 	_, err := GetStatInfo("regularhorses")
 	_, ok := err.(*MissingStatInfo)
@@ -53,7 +55,7 @@ func (s *StatsAPISuite) TestGetStatInfo(c *C) {
 	c.Assert(info.Details, DeepEquals, info2.Details)
 }
 
-func (s *StatsAPISuite) TestgetStatDetail(c *C) {
+func (s *StatsAPISuite) TestGetStatDetail(c *C) {
 	deets := []StatDetails{
 		{
 			StatID:    "size",
@@ -69,28 +71,43 @@ func (s *StatsAPISuite) TestgetStatDetail(c *C) {
 		},
 	}
 
-	_, err := getStatDetail(deets, "width")
+	_, err := GetStatDetail(deets, "width")
 	_, ok := err.(*MissingStatDetails)
 	c.Assert(ok, Equals, true)
 
-	deet, err := getStatDetail(deets, "height")
+	deet, err := GetStatDetail(deets, "height")
 	c.Assert(err, IsNil)
 	c.Assert(deet, DeepEquals, &deets[1])
 }
 
-func (s *StatsAPISuite) TestapplyThreshold(c *C) {
-	val, _ := applyThreshold("60%", 100)
+func (s *StatsAPISuite) TestApplyThreshold(c *C) {
+	val, _ := ApplyThreshold("60%", 100)
 	c.Assert(val, Equals, 60)
 
-	val2, _ := applyThreshold("60", 100)
+	val2, _ := ApplyThreshold("60", 100)
 	c.Assert(val2, Equals, 60)
 
-	_, err := applyThreshold("", 100)
+	_, err := ApplyThreshold("", 100)
 	c.Assert(err, Equals, ErrMissingThreshold)
 
-	_, err2 := applyThreshold("ABC%", 100)
+	_, err2 := ApplyThreshold("ABC%", 100)
 	c.Assert(err2, NotNil)
 
-	_, err3 := applyThreshold("ABC", 100)
+	_, err3 := ApplyThreshold("ABC", 100)
 	c.Assert(err3, NotNil)
+}
+
+//func NewStatRequest(entity string, opts map[string][]string) (*statsapi.StatRequest, error) {
+func (s *StatsAPISuite) TestNewStatRequest(c *C) {
+	/*
+		req := map[string][]string{
+			"stat":       {},
+			"end":        {},
+			"start":      {},
+			"id":         {},
+			"resolution": {},
+		}
+
+		sr, err := NewStatRequest("karatehorses", req)
+	*/
 }

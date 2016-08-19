@@ -17,7 +17,6 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
-	"strconv"
 	"time"
 
 	"github.com/zenoss/go-json-rest"
@@ -25,23 +24,9 @@ import (
 	"github.com/control-center/serviced/statsapi"
 )
 
-// StatRequestError is created when there
-// is an error creating a StatRequest
-type StatRequestError struct {
-	Message string
-}
-
 // ErrMissingEntityName is created when
 // an entity name is required but is empty
 var ErrMissingEntityName = errors.New("entity name cannot be empty")
-
-func (err StatRequestError) Error() string {
-	return err.Message
-}
-
-// TODO - configurable defaults?
-var defaultDuration, _ = time.ParseDuration("1h")
-var defaultResolution, _ = time.ParseDuration("5m")
 
 // statsResponse is the response struct that is
 // serialized and sent to the client
@@ -50,100 +35,6 @@ type statsResponse struct {
 	End        int                              `json:"end"`
 	Resolution time.Duration                    `json:"resolution"`
 	Results    map[string][]statsapi.StatResult `json:"results"`
-}
-
-// msToTime takes milliseconds since epoch and
-// returns a time object
-func msToTime(ms string) (time.Time, error) {
-	msInt, err := strconv.ParseInt(ms, 10, 64)
-	if err != nil {
-		return time.Time{}, err
-	}
-
-	return time.Unix(0, msInt*int64(time.Millisecond)), nil
-}
-
-func timeToMS(t time.Time) int {
-	return int(t.UnixNano() / 1000000)
-}
-
-// newStatRequest creates a new stat request from
-// a Values map, defaults values, and validates them
-func newStatRequest(entity string, query url.Values) (*statsapi.StatRequest, error) {
-	// required fields
-	stats, ok := query["stat"]
-	if !ok || len(stats) == 0 {
-		return nil, &StatRequestError{
-			Message: "at least one stat is required",
-		}
-	}
-
-	// optional fields
-	var end time.Time
-	if endStr := query.Get("end"); endStr != "" {
-		var err error
-		end, err = msToTime(endStr)
-		if err != nil {
-			return nil, &StatRequestError{
-				Message: fmt.Sprintf("invalid end time %s", endStr),
-			}
-		}
-	}
-
-	var start time.Time
-	if startStr := query.Get("start"); startStr != "" {
-		var err error
-		start, err = msToTime(startStr)
-		if err != nil {
-			return nil, &StatRequestError{
-				Message: fmt.Sprintf("invalid start time %s", startStr),
-			}
-		}
-	}
-
-	// if start, end, or both are missing, create them
-	if end.IsZero() && start.IsZero() {
-		end = time.Now()
-		start = end.Add(-defaultDuration)
-	} else if end.IsZero() {
-		// NOTE - this can produce an end time
-		// in the future
-		end = start.Add(defaultDuration)
-	} else if start.IsZero() {
-		start = end.Add(-defaultDuration)
-	}
-
-	if !end.After(start) {
-		return nil, &StatRequestError{
-			Message: fmt.Sprintf("end time must be after start time"),
-		}
-	}
-
-	ids, _ := query["id"]
-
-	var res time.Duration
-	if resStr := query.Get("resolution"); resStr == "" {
-		res = defaultResolution
-	} else {
-		var err error
-		res, err = time.ParseDuration(resStr)
-		if err != nil {
-			return nil, &StatRequestError{
-				Message: fmt.Sprintf("invalid resolution %s", resStr),
-			}
-		}
-	}
-
-	sr := &statsapi.StatRequest{
-		EntityType: entity,
-		Stats:      stats,
-		EntityIDs:  ids,
-		Start:      start,
-		End:        end,
-		Resolution: res,
-	}
-
-	return sr, nil
 }
 
 func restGetStatsMeta(w *rest.ResponseWriter, r *rest.Request, ctx *requestContext) {
@@ -173,7 +64,7 @@ func restGetStats(w *rest.ResponseWriter, r *rest.Request, ctx *requestContext) 
 	// TODO - err handle
 	query := r.URL.Query()
 
-	sr, err := newStatRequest(entity, query)
+	sr, err := statsapi.NewStatRequest(entity, query)
 	if err != nil {
 		restBadRequest(w, err)
 		return
@@ -193,8 +84,8 @@ func restGetStats(w *rest.ResponseWriter, r *rest.Request, ctx *requestContext) 
 	}
 
 	w.WriteJson(&statsResponse{
-		Start:      timeToMS(sr.Start),
-		End:        timeToMS(sr.End),
+		Start:      statsapi.TimeToMS(sr.Start),
+		End:        statsapi.TimeToMS(sr.End),
 		Resolution: sr.Resolution,
 		Results:    byID,
 	})

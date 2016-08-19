@@ -14,18 +14,31 @@
 package statsapi
 
 import (
-	"errors"
 	"fmt"
-	"strconv"
-	"strings"
 	"time"
 
 	"github.com/control-center/serviced/metrics"
 )
 
-// ErrMissingThreshold occurs when a
-// threshold is necessary by absent
-var ErrMissingThreshold = errors.New("threshold cannot be empty")
+var (
+	// TODO - configurable defaults?
+	defaultDuration, _   = time.ParseDuration("1h")
+	defaultResolution, _ = time.ParseDuration("5m")
+
+	// availableStats is a registry of StatInfo, keyed by
+	// entity name
+	availableStats = map[string]StatInfo{}
+)
+
+// StatRequestError is created when there
+// is an error creating a StatRequest
+type StatRequestError struct {
+	Message string
+}
+
+func (err StatRequestError) Error() string {
+	return err.Message
+}
 
 // MissingStatInfo occurs when a StatInfo
 // is requested but the entity is not in
@@ -93,10 +106,6 @@ type StatDetails struct {
 // can produce an array of StatResults
 type StatFetcher func(*StatRequest, *StatInfo) ([]StatResult, error)
 
-// availableStats is a registry of StatInfo, keyed by
-// entity name
-var availableStats = map[string]StatInfo{}
-
 // GetStatInfo looksup StatInfo object in
 // availableStats for the given entity
 func GetStatInfo(entity string) (*StatInfo, error) {
@@ -109,18 +118,18 @@ func GetStatInfo(entity string) (*StatInfo, error) {
 	return &statInfo, nil
 }
 
-// addStatInfo allows new StatInfo objects
+// AddStatInfo allows new StatInfo objects
 // to be added to availableStats, keyed by
 // entity name (eg: hosts, masters)
-func addStatInfo(entity string, s StatInfo) error {
+func AddStatInfo(entity string, s StatInfo) error {
 	availableStats[entity] = s
 	return nil
 }
 
-// getStatDetail searches through a StatInfo for
+// GetStatDetail searches through a StatInfo for
 // the StatDetails object that matches the provided
 // stat id
-func getStatDetail(details []StatDetails, statID string) (*StatDetails, error) {
+func GetStatDetail(details []StatDetails, statID string) (*StatDetails, error) {
 	for _, i := range details {
 		if i.StatID == statID {
 			return &i, nil
@@ -131,32 +140,84 @@ func getStatDetail(details []StatDetails, statID string) (*StatDetails, error) {
 	}
 }
 
-// applyThreshold takes a threshold and a value to apply to.
-// If the threshold is a percent, it is applied to the value
-// and the result returned. If the threshold is a number, it is
-// parsed to int and returned. Eg: 100% or 872891
-func applyThreshold(threshold string, val int) (int, error) {
-	if threshold == "" {
-		return 0, ErrMissingThreshold
-	}
-
-	// apply threshold percentage to total val
-	if strings.HasSuffix(threshold, "%") {
-		trimmed := strings.TrimSuffix(threshold, "%")
-		percent, err := strconv.Atoi(trimmed)
-		if err != nil {
-			return 0, err
+// NewStatRequest creates a new stat request from
+// a map options, defaults values as needed, and validates them
+func NewStatRequest(entity string, opts map[string][]string) (*StatRequest, error) {
+	// required fields
+	stats, ok := opts["stat"]
+	if !ok || len(stats) == 0 {
+		return nil, &StatRequestError{
+			Message: "at least one stat is required",
 		}
-		// TODO - is int sufficient precision?
-		result := int(float64(percent) * 0.01 * float64(val))
-		return result, nil
 	}
 
-	// just return threshold as int
-	result, err := strconv.Atoi(threshold)
-	if err != nil {
-		return 0, err
+	// optional fields
+	var end time.Time
+	if endArr, ok := opts["end"]; ok && (len(endArr) == 1) {
+		endStr := endArr[0]
+		var err error
+		end, err = MSToTime(endStr)
+		if err != nil {
+			return nil, &StatRequestError{
+				Message: fmt.Sprintf("invalid end time %s", endStr),
+			}
+		}
 	}
-	return result, nil
 
+	var start time.Time
+	if startArr, ok := opts["start"]; ok && (len(startArr) == 1) {
+		startStr := startArr[0]
+		var err error
+		start, err = MSToTime(startStr)
+		if err != nil {
+			return nil, &StatRequestError{
+				Message: fmt.Sprintf("invalid start time %s", startStr),
+			}
+		}
+	}
+
+	// if start, end, or both are missing, create them
+	if end.IsZero() && start.IsZero() {
+		end = time.Now()
+		start = end.Add(-defaultDuration)
+	} else if end.IsZero() {
+		// NOTE - this can produce an end time
+		// in the future
+		end = start.Add(defaultDuration)
+	} else if start.IsZero() {
+		start = end.Add(-defaultDuration)
+	}
+
+	if !end.After(start) {
+		return nil, &StatRequestError{
+			Message: fmt.Sprintf("end time must be after start time"),
+		}
+	}
+
+	ids, _ := opts["id"]
+
+	var res time.Duration
+	if resArr, ok := opts["resolution"]; !ok || (len(resArr) == 0) {
+		res = defaultResolution
+	} else {
+		resStr := resArr[0]
+		var err error
+		res, err = time.ParseDuration(resStr)
+		if err != nil {
+			return nil, &StatRequestError{
+				Message: fmt.Sprintf("invalid resolution %s", resStr),
+			}
+		}
+	}
+
+	sr := &StatRequest{
+		EntityType: entity,
+		Stats:      stats,
+		EntityIDs:  ids,
+		Start:      start,
+		End:        end,
+		Resolution: res,
+	}
+
+	return sr, nil
 }

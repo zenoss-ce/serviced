@@ -18,7 +18,7 @@ import (
 )
 
 func init() {
-	addStatInfo("hosts", StatInfo{
+	AddStatInfo("hosts", StatInfo{
 		Details: []StatDetails{
 			{
 				StatID:    "mem",
@@ -50,7 +50,7 @@ func hostsStatFetcher(sr *StatRequest, info *StatInfo) (results []StatResult, er
 	for _, stat := range sr.Stats {
 		// if detailErr, create results for each
 		// EntityID anyway, just make it an "error" result
-		detail, detailErr := getStatDetail(details, stat)
+		detail, detailErr := GetStatDetail(details, stat)
 
 		for _, id := range sr.EntityIDs {
 
@@ -67,7 +67,7 @@ func hostsStatFetcher(sr *StatRequest, info *StatInfo) (results []StatResult, er
 				continue
 			}
 
-			threshold, err := applyThreshold(detail.Threshold, capacity)
+			threshold, err := ApplyThreshold(detail.Threshold, capacity)
 			if err != nil {
 				results = append(results, StatResult{
 					EntityID: id,
