@@ -43,7 +43,7 @@ func init() {
 	})
 }
 
-func hostsStatFetcher(sr *StatRequest, info *StatInfo) (results []StatResult, err error) {
+func hostsStatFetcherMock(sr *StatRequest, info *StatInfo) (results []StatResult, err error) {
 	entity := "hosts"
 	details := info.Details
 
@@ -87,4 +87,17 @@ func hostsStatFetcher(sr *StatRequest, info *StatInfo) (results []StatResult, er
 		}
 	}
 	return results, nil
+}
+
+func hostsStatFetcher(sr *StatRequest, info *StatInfo) (results []StatResult, err error) {
+	// The query service client is accessible in sr.QueryServiceClient) for now, we may
+	// want to add a ref to it in the statsFacade
+
+	// 1 - Do we need to do validation here?
+
+	// 2 - Get the stats
+	sf := &statsFacade{QueryServiceClient: sr.QueryServiceClient} // This will be global
+	stats, err := sf.getHostStats(sr)
+
+	return stats, err
 }

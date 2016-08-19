@@ -70,7 +70,7 @@ func (sf *statsFacade) getHostStats(sr *StatRequest) (results []StatResult, err 
 	for _, metricResult := range queryResult.Results {
 		nDatapoints := len(metricResult.Datapoints)
 		statRes := &StatResult{
-			EntityID: sr.EntityType,
+			EntityID: metricResult.Tags["controlplane_host_id"][0],
 			Stat:     metricToStatTranslator[metricResult.Metric],
 			Values:   make([]float64, nDatapoints),
 			//Threshold int    `json:"threshold"`
