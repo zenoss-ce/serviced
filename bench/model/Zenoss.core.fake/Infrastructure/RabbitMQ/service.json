@@ -109,12 +109,7 @@
         }
     ],
     "Name": "RabbitMQ",
-    "Prereqs": [
-        {
-            "Name": "Cluster Leader Start",
-            "Script": "[ $(hostname) == 'rbt0' ] || rabbitmqctl -n rabbit@rbt0 status | grep nodedown || sleep 5"
-        }
-    ],
+    "Prereqs": [],
     "Privileged": true,
     "RAMCommitment": "256M",
     "Services": [],
@@ -124,14 +119,5 @@
     },
     "Tags": [
         "daemon"
-    ],
-    "Volumes": [
-        {
-            "#####": "drwxr-x--- 4 rabbitmq rabbitmq 4096 Feb 25 21:25 /var/lib/rabbitmq",
-            "ContainerPath": "/var/lib/rabbitmq",
-            "Owner": "rabbitmq:rabbitmq",
-            "Permission": "0750",
-            "ResourcePath": "rabbitmq/{{.InstanceID}}"
-        }
     ]
 }

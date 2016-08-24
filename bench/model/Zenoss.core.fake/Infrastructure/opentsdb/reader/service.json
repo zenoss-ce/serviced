@@ -61,12 +61,7 @@
         }
     ],
     "Name": "opentsdb-reader",
-    "Prereqs": [
-        {
-            "Name": "HBase Regionservers up",
-            "Script": "{{with $rss := (child (child (parent (parent .)) \"HBase\") \"RegionServer\").Instances }}wget -q -O- http://localhost:61000/status/cluster | grep '{{$rss}} live servers'{{end}}"
-        }
-    ],
+    "Prereqs": [],
     "RAMCommitment": "1G",
     "Services": [],
     "Tags": [

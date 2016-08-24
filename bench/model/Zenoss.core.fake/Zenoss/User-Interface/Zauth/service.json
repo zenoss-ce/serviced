@@ -101,21 +101,9 @@
         }
     ],
     "Name": "zauth",
-    "Prereqs": [
-        {
-            "Name": "MariaDB connectivity",
-            "Script": "su - zenoss -c '/opt/zenoss/bin/python /opt/zenoss/Products/ZenUtils/ZenDB.py --usedb zodb --execsql=\";\"'"
-        }
-    ],
+    "Prereqs": [],
     "RAMCommitment": "1G",
     "Tags": [
         "daemon"
-    ],
-    "Volumes": [
-        {
-            "ContainerPath": "/var/zenoss",
-            "Permission": "0775",
-            "ResourcePath": "var-zenpacks"
-        }
     ]
 }

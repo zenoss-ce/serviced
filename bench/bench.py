@@ -20,7 +20,7 @@ import os
 import sys
 from subprocess import call
 
-log = logging.getLogger("bench")
+log = logging.getLogger("bench.py")
 
 
 def fail(msg):
@@ -39,8 +39,10 @@ def args():
     parser = argparse.ArgumentParser(
         description="generate test services for serviced")
 
-    parser.add_argument("-v", "--verbose", action="store_true",
-                        help="verbose logging")
+    parser.add_argument("-t", "--template", action="store_true",
+                        help="generate template")
+    parser.add_argument("-z", "--zendev", action="store_true",
+                        help="generate template for zendev")
 
     parser.add_argument("--model", help="model path",
                         default="./model/Zenoss.core.fake")
@@ -48,12 +50,13 @@ def args():
     parser.add_argument("--collectorpath",
                         help="relative path of collector top-level"
                              " (from model path)",
-                        default="Zenoss/Collection/localhost/localhost")
-    parser.add_argument("-t", "--template", action="store_true",
-                        help="generate template")
+                        default="Zenoss/Collection/localhost")
     parser.add_argument("collectors",
                         help="number of collector instances to create",
                         type=int, default=1)
+
+    parser.add_argument("-v", "--verbose", action="store_true",
+                        help="verbose logging")
 
     return parser.parse_args()
 
@@ -70,22 +73,27 @@ def main(opts):
     modelname = os.path.basename(os.path.normpath(opts.model))
     outpath = os.path.join(opts.out, modelname)
 
-    log.info("Copy %s to %s", opts.model, outpath)
+    log.debug("Copy %s to %s", opts.model, outpath)
     distutils.dir_util.copy_tree(opts.model, outpath)
-    log.info("directory to copy %d times: %s", opts.collectors,
+    log.debug("directory to copy %d times: %s", opts.collectors,
              os.path.join(outpath, opts.collectorpath))
     sourcepath = os.path.join(outpath, opts.collectorpath)
     for n in range(1, opts.collectors):
         destpath = sourcepath + str(n)
-        log.info("copy %s to %s", sourcepath, destpath)
+        log.debug("copy %s to %s", sourcepath, destpath)
         distutils.dir_util.copy_tree(sourcepath, destpath)
 
-    if opts.template:
+    if opts.template or opts.zendev:
         templpath = outpath + ".json"
-        log.info("generating template %s from %s", templpath, outpath)
+        log.debug("generating template %s from %s", templpath, outpath)
         with open(templpath, 'w') as outfile:
-                call(["serviced", "template", "compile", "--map", "zenoss/zenoss5x,zendev/devimg:europa", outpath],
-                     stdout=outfile)
+            command = ["serviced", "template", "compile"]
+            if opts.zendev:
+                command.extend(["--map",
+                                "zenoss/zenoss5x,zendev/devimg:europa"])
+            command.extend([outpath])
+            call(command, stdout=outfile)
+        log.info("generated template file: %s", templpath)
 
 
 if __name__ == "__main__":

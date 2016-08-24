@@ -4,12 +4,10 @@
     "ConfigFiles": {
         "/etc/zookeeper.cfg": {
             "FileName": "/etc/zookeeper.cfg",
-            "Owner": "zookeeper:zookeeper",
             "Permissions": "0664"
         },
         "/var/lib/zookeeper/myid": {
             "FileName": "/var/lib/zookeeper/myid",
-            "Owner": "zookeeper:zookeeper",
             "Permissions": "0664"
         }
     },
@@ -85,14 +83,5 @@
     "RAMCommitment": "1G",
     "Tags": [
         "daemon"
-    ],
-    "Volumes": [
-        {
-            "#####": "drwxr-xr-x  2 zookeeper zookeeper 4.0K Apr 15 12:57 /var/lib/zookeeper/version-2",
-            "ContainerPath": "/var/lib/zookeeper/version-2",
-            "Owner": "zookeeper:zookeeper",
-            "Permission": "0755",
-            "ResourcePath": "hbase-zookeeper-{{ plus 1 .InstanceID }}"
-        }
     ]
 }

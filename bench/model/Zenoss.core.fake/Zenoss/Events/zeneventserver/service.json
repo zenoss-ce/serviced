@@ -121,12 +121,7 @@
         }
     ],
     "Name": "zeneventserver",
-    "Prereqs": [
-        {
-            "Name": "MariaDB connectivity",
-            "Script": "su - zenoss -c '/opt/zenoss/bin/python /opt/zenoss/Products/ZenUtils/ZenDB.py --usedb zep --execsql=\";\"'"
-        }
-    ],
+    "Prereqs": [],
     "RAMCommitment": "1G",
     "Tags": [
         "daemon"

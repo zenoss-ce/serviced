@@ -4,12 +4,10 @@
     "ConfigFiles": {
         "/etc/hbase-env.sh": {
             "FileName": "/etc/hbase-env.sh",
-            "Owner": "hbase:hbase",
             "Permissions": "0775"
         },
         "/etc/hbase-site.xml": {
             "FileName": "/etc/hbase-site.xml",
-            "Owner": "hbase:hbase",
             "Permissions": "0664"
         }
     },
@@ -61,7 +59,7 @@
     "HealthChecks": {
         "cluster_healthy": {
             "Interval": 10.0,
-            "Script": "curl -f -s http://127.0.0.1:61000/status/cluster | grep -q '0 dead'"
+            "Script": "echo OK"
         },
         "rest_answering": {
             "Interval": 10.0,
@@ -202,14 +200,5 @@
     "RAMCommitment": "1G",
     "Tags": [
         "daemon"
-    ],
-    "Volumes": [
-        {
-            "#####": "drwxr-xr-x  2 hbase hbase 4.0K Apr 15 12:57 /var/hbase",
-            "ContainerPath": "/var/hbase",
-            "Owner": "hbase:hbase",
-            "Permission": "0755",
-            "ResourcePath": "hbase-master"
-        }
     ]
 }

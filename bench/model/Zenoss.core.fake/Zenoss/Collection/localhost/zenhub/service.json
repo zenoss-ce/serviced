@@ -118,7 +118,7 @@
         },
         "workers_running": {
             "Interval": 5.0,
-            "Script": "pgrep -fu zenoss zenhubworker.py > /dev/null"
+            "Script": "echo OK"
         },
         "zep_answering": {
             "Interval": 10.0,
@@ -137,12 +137,7 @@
         }
     ],
     "Name": "zenhub",
-    "Prereqs": [
-        {
-            "Name": "MariaDB connectivity",
-            "Script": "su - zenoss -c '/opt/zenoss/bin/python /opt/zenoss/Products/ZenUtils/ZenDB.py --usedb zodb --execsql=\";\"'"
-        }
-    ],
+    "Prereqs": [],
     "RAMCommitment": "1G",
     "Services": [],
     "Tags": [

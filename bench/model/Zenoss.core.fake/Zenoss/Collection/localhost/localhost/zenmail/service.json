@@ -284,12 +284,5 @@
         "ZenPacks.zenoss.ZenMail",
         "daemon",
         "collector"
-    ],
-    "Volumes": [
-        {
-            "ContainerPath": "/var/zenoss",
-            "Permission": "0775",
-            "ResourcePath": "var-zenpacks"
-        }
     ]
 }

@@ -87,15 +87,15 @@
     "HealthChecks": {
         "answering": {
             "Interval": 5.0,
-            "Script": "curl -f -s http://localhost:8080/ > /dev/null"
+            "Script": "echo OK"
         },
         "ready": {
             "Interval": 30.0,
-            "Script": "curl --output /dev/null --silent --write-out \"%{http_code}\" http://localhost:8080/robots.txt | grep 200 >/dev/null"
+            "Script": "echo OK"
         },
         "running": {
             "Interval": 5.0,
-            "Script": "pgrep -fu zenoss nginx >/dev/null"
+            "Script": "echo OK"
         }
     },
     "ImageID": "zenoss/zenoss5x",
@@ -119,14 +119,5 @@
         "daemon"
     ],
     "Title": "zproxy",
-    "Version": "5.2.0",
-    "Volumes": [
-        {
-            "#####": "drwxrwxr-x  3 zenoss zenoss 4.0K Jul 24 01:54 zproxy",
-            "ContainerPath": "/opt/zenoss/var/zproxy",
-            "Permission": "0775",
-            "ResourcePath": "zproxy",
-            "Type": "tmp"
-        }
-    ]
+    "Version": "5.2.0"
 }

@@ -4,12 +4,10 @@
     "ConfigFiles": {
         "/opt/hadoop/etc/hadoop/core-site.xml": {
             "FileName": "/opt/hadoop/etc/hadoop/core-site.xml",
-            "Owner": "hdfs:hdfs",
             "Permissions": "0775"
         },
         "/opt/hadoop/etc/hadoop/hdfs-site.xml": {
             "FileName": "/opt/hadoop/etc/hadoop/hdfs-site.xml",
-            "Owner": "hdfs:hdfs",
             "Permissions": "0775"
         }
     },
@@ -66,13 +64,5 @@
     "RAMCommitment": "1G",
     "Tags": [
         "daemon"
-    ],
-    "Volumes": [
-        {
-            "ContainerPath": "/var/hdfs/secondary",
-            "Owner": "hdfs:hdfs",
-            "Permission": "0755",
-            "ResourcePath": "hdfs-data-secondary"
-        }
     ]
 }
