@@ -7,12 +7,10 @@
     "ConfigFiles": {
         "/opt/zenoss/etc/central-query/central-query_supervisor.conf": {
             "FileName": "/opt/zenoss/etc/central-query/central-query_supervisor.conf",
-            "Owner": "zenoss:zenoss",
             "Permissions": "0644"
         },
         "/opt/zenoss/etc/central-query/configuration.yaml": {
             "FileName": "/opt/zenoss/etc/central-query/configuration.yaml",
-            "Owner": "zenoss:zenoss",
             "Permissions": "0644"
         }
     },

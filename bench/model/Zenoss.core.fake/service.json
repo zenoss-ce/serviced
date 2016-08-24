@@ -4,7 +4,6 @@
     "ConfigFiles": {
         "/opt/zenoss/zproxy/conf/zproxy-nginx.conf": {
             "Filename": "/opt/zenoss/zproxy/conf/zproxy-nginx.conf",
-            "Owner": "zenoss:zenoss",
             "Permissions": "644"
         }
     },
@@ -125,7 +124,6 @@
         {
             "#####": "drwxrwxr-x  3 zenoss zenoss 4.0K Jul 24 01:54 zproxy",
             "ContainerPath": "/opt/zenoss/var/zproxy",
-            "Owner": "zenoss:zenoss",
             "Permission": "0775",
             "ResourcePath": "zproxy",
             "Type": "tmp"

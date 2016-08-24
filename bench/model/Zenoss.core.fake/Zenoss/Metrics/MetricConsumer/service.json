@@ -7,12 +7,10 @@
     "ConfigFiles": {
         "/opt/zenoss/etc/metric-consumer-app/configuration.yaml": {
             "FileName": "/opt/zenoss/etc/metric-consumer-app/configuration.yaml",
-            "Owner": "zenoss:zenoss",
             "Permissions": "0644"
         },
         "/opt/zenoss/etc/metric-consumer-app/metric-consumer-app_supervisor.conf": {
             "FileName": "/opt/zenoss/etc/metric-consumer-app/metric-consumer-app_supervisor.conf",
-            "Owner": "zenoss:zenoss",
             "Permissions": "0644"
         }
     },

@@ -55,20 +55,5 @@
     "Tags": [
         "daemon",
         "collector"
-    ],
-    "Volumes": [
-        {
-            "ContainerPath": "/home/zenoss/.ssh",
-            "Owner": "zenoss:zenoss",
-            "Permission": "0755",
-            "ResourcePath": ".ssh",
-            "Type": ""
-        },
-        {
-            "ContainerPath": "/var/zenoss",
-            "Owner": "zenoss:zenoss",
-            "Permission": "0775",
-            "ResourcePath": "var-zenpacks"
-        }
     ]
 }

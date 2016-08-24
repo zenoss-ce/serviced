@@ -4,7 +4,6 @@
     "ConfigFiles": {
         "/opt/zenoss/etc/metricshipper/metricshipper.yaml": {
             "FileName": "/opt/zenoss/etc/metricshipper/metricshipper.yaml",
-            "Owner": "zenoss:zenoss",
             "Permissions": "0644"
         }
     },
