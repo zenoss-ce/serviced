@@ -84,7 +84,7 @@ def main(opts):
         templpath = outpath + ".json"
         log.info("generating template %s from %s", templpath, outpath)
         with open(templpath, 'w') as outfile:
-                call(["serviced", "template", "compile", outpath],
+                call(["serviced", "template", "compile", "--map", "zenoss/zenoss5x,zendev/devimg:europa", outpath],
                      stdout=outfile)
 
 
