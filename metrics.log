@@ -1,0 +1,10 @@
+StopService     services 50    15:59:34.346802 Facade.walkServices()                    count 1         min 15.22s         max 15.22s         mean 15.22s         stddev 0.00s          median 15.22s        
+StopService     services 50    15:59:34.346854 Facade.fillOutService()                  count 50        min 0.00s          max 0.05s          mean 0.01s          stddev 0.01s          median 0.01s         
+StopService     services 50    15:59:34.346916 Facade.fillServiceAddr()                 count 50        min 0.00s          max 0.02s          mean 0.00s          stddev 0.00s          median 0.00s         
+StopService     services 50    15:59:34.346943 Facade.scheduleService()                 count 1         min 15.22s         max 15.22s         mean 15.22s         stddev 0.00s          median 15.22s        
+StartService    services 50    16:00:31.877587 Facade.scheduleService()                 count 1         min 6.00s          max 6.00s          mean 6.00s          stddev 0.00s          median 6.00s         
+StartService    services 50    16:00:31.877636 Facade.validateServiceSchedule()         count 1         min 0.26s          max 0.26s          mean 0.26s          stddev 0.00s          median 0.26s         
+StartService    services 50    16:00:31.877665 Facade.walkServices()                    count 2         min 0.26s          max 5.74s          mean 3.00s          stddev 2.74s          median 3.00s         
+StartService    services 50    16:00:31.877725 Facade.fillOutService()                  count 88        min 0.00s          max 0.02s          mean 0.01s          stddev 0.00s          median 0.01s         
+StartService    services 50    16:00:31.877777 Facade.fillServiceAddr()                 count 88        min 0.00s          max 0.00s          mean 0.00s          stddev 0.00s          median 0.00s         
+StartService    services 50    16:00:31.877807 Facade.GetRunningServicesForHosts()      count 9         min 0.07s          max 0.73s          mean 0.29s          stddev 0.20s          median 0.25s         
