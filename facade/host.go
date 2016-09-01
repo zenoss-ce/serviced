@@ -39,6 +39,7 @@ const (
 // AddHost registers a host with serviced. Returns an error if host already
 // exists or if the host's IP is a virtual IP.
 func (f *Facade) AddHost(ctx datastore.Context, entity *host.Host) error {
+	defer ctx.Metrics().Stop(ctx.Metrics().Start("Facade.AddHost()"))
 	glog.V(2).Infof("Facade.AddHost: %v", entity)
 	if err := f.DFSLock(ctx).LockWithTimeout("add host", userLockTimeout); err != nil {
 		glog.Warningf("Cannot add host: %s", err)
@@ -49,6 +50,7 @@ func (f *Facade) AddHost(ctx datastore.Context, entity *host.Host) error {
 }
 
 func (f *Facade) addHost(ctx datastore.Context, entity *host.Host) error {
+	defer ctx.Metrics().Stop(ctx.Metrics().Start("Facade.addHost()"))
 	exists, err := f.GetHost(ctx, entity.ID)
 	if err != nil {
 		return err
@@ -95,6 +97,7 @@ func (f *Facade) addHost(ctx datastore.Context, entity *host.Host) error {
 
 // UpdateHost information for a registered host
 func (f *Facade) UpdateHost(ctx datastore.Context, entity *host.Host) error {
+	defer ctx.Metrics().Stop(ctx.Metrics().Start("Facade.UpdateHost()"))
 	glog.V(2).Infof("Facade.UpdateHost: %+v", entity)
 	if err := f.DFSLock(ctx).LockWithTimeout("update host", userLockTimeout); err != nil {
 		glog.Warningf("Cannot update host: %s", err)
@@ -135,6 +138,7 @@ func (f *Facade) UpdateHost(ctx datastore.Context, entity *host.Host) error {
 
 // RemoveHost removes a Host from serviced
 func (f *Facade) RemoveHost(ctx datastore.Context, hostID string) (err error) {
+	defer ctx.Metrics().Stop(ctx.Metrics().Start("Facade.RemoveHost()"))
 	glog.V(2).Infof("Facade.RemoveHost: %s", hostID)
 	if err := f.DFSLock(ctx).LockWithTimeout("remove host", userLockTimeout); err != nil {
 		glog.Warningf("Cannot remove host: %s", err)
@@ -195,6 +199,7 @@ func (f *Facade) RemoveHost(ctx datastore.Context, hostID string) (err error) {
 
 // GetHost gets a host by id. Returns nil if host not found
 func (f *Facade) GetHost(ctx datastore.Context, hostID string) (*host.Host, error) {
+	defer ctx.Metrics().Stop(ctx.Metrics().Start("Facade.GetHost()"))
 	glog.V(2).Infof("Facade.GetHost: id=%s", hostID)
 
 	var value host.Host
@@ -211,10 +216,12 @@ func (f *Facade) GetHost(ctx datastore.Context, hostID string) (*host.Host, erro
 
 // GetHosts returns a list of all registered hosts
 func (f *Facade) GetHosts(ctx datastore.Context) ([]host.Host, error) {
+	defer ctx.Metrics().Stop(ctx.Metrics().Start("Facade.GetHosts()"))
 	return f.hostStore.GetN(ctx, 10000)
 }
 
 func (f *Facade) GetActiveHostIDs(ctx datastore.Context) ([]string, error) {
+	defer ctx.Metrics().Stop(ctx.Metrics().Start("Facade.GetActiveHostIDs()"))
 	hostids := []string{}
 	pools, err := f.GetResourcePools(ctx)
 	if err != nil {
@@ -234,9 +241,11 @@ func (f *Facade) GetActiveHostIDs(ctx datastore.Context) ([]string, error) {
 
 // FindHostsInPool returns a list of all hosts with poolID
 func (f *Facade) FindHostsInPool(ctx datastore.Context, poolID string) ([]host.Host, error) {
+	defer ctx.Metrics().Stop(ctx.Metrics().Start("Facade.FindHostsInPool()"))
 	return f.hostStore.FindHostsWithPoolID(ctx, poolID)
 }
 
 func (f *Facade) GetHostByIP(ctx datastore.Context, hostIP string) (*host.Host, error) {
+	defer ctx.Metrics().Stop(ctx.Metrics().Start("Facade.GetHostByIP()"))
 	return f.hostStore.GetHostByIP(ctx, hostIP)
 }

@@ -27,6 +27,7 @@ import (
 // getServicePath returns the tenantID and the full path of the service
 // TODO: update function to include deploymentID in the service path
 func (f *Facade) getServicePath(ctx datastore.Context, serviceID string) (tenantID string, servicePath string, err error) {
+	defer ctx.Metrics().Stop(ctx.Metrics().Start("Facade.getServicePath()"))
 	store := f.serviceStore
 	svc, err := store.Get(ctx, serviceID)
 	if err != nil {
@@ -46,6 +47,7 @@ func (f *Facade) getServicePath(ctx datastore.Context, serviceID string) (tenant
 // updateServiceConfigs adds or updates configuration files.  If forceDelete is
 // set to true, then remove any extranneous service configurations.
 func (f *Facade) updateServiceConfigs(ctx datastore.Context, serviceID string, configFiles []servicedefinition.ConfigFile, forceDelete bool) error {
+	defer ctx.Metrics().Stop(ctx.Metrics().Start("Facade.updateServiceConfigs()"))
 	tenantID, servicePath, err := f.getServicePath(ctx, serviceID)
 	if err != nil {
 		return err
@@ -99,6 +101,7 @@ func (f *Facade) updateServiceConfigs(ctx datastore.Context, serviceID string, c
 
 // fillServiceConfigs sets the configuration files on the service
 func (f *Facade) fillServiceConfigs(ctx datastore.Context, svc *service.Service) error {
+	defer ctx.Metrics().Stop(ctx.Metrics().Start("Facade.fillServiceConfigs()"))
 	tenantID, servicePath, err := f.getServicePath(ctx, svc.ID)
 	if err != nil {
 		return err

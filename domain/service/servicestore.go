@@ -80,7 +80,7 @@ func (s *storeImpl) Put(ctx datastore.Context, svc *Service) error {
 // Get a Service by id. Return ErrNoSuchEntity if not found
 func (s *storeImpl) Get(ctx datastore.Context, id string) (*Service, error) {
 	defer ctx.Metrics().Stop(ctx.Metrics().Start("servicestore.Get()"))
-	
+
 	svc := &Service{}
 	if err := s.ds.Get(ctx, Key(id), svc); err != nil {
 		return nil, err
@@ -95,7 +95,7 @@ func (s *storeImpl) Get(ctx datastore.Context, id string) (*Service, error) {
 // Delete removes the a Service if it exists
 func (s *storeImpl) Delete(ctx datastore.Context, id string) error {
 	defer ctx.Metrics().Stop(ctx.Metrics().Start("servicestore.Delete()"))
-    return s.ds.Delete(ctx, Key(id))
+	return s.ds.Delete(ctx, Key(id))
 }
 
 // GetServices returns all services
@@ -138,7 +138,7 @@ func (s *storeImpl) GetTaggedServices(ctx datastore.Context, tags ...string) ([]
 // GetServicesByPool returns services with the given pool id
 func (s *storeImpl) GetServicesByPool(ctx datastore.Context, poolID string) ([]Service, error) {
 	defer ctx.Metrics().Stop(ctx.Metrics().Start("servicestore.GetServicesByPool()"))
-	
+
 	id := strings.TrimSpace(poolID)
 	if id == "" {
 		return nil, errors.New("empty poolID not allowed")
@@ -153,14 +153,14 @@ func (s *storeImpl) GetServicesByPool(ctx datastore.Context, poolID string) ([]S
 		return nil, err
 	}
 
-	defer ctx.Metrics().Stop(ctx.Metrics().Start("servicestore.convert()"))	
+	defer ctx.Metrics().Stop(ctx.Metrics().Start("servicestore.convert()"))
 	return convert(results)
 }
 
 // GetServicesByDeployment returns services with the given deployment id
 func (s *storeImpl) GetServicesByDeployment(ctx datastore.Context, deploymentID string) ([]Service, error) {
 	defer ctx.Metrics().Stop(ctx.Metrics().Start("servicestore.GetServicesByDeployment()"))
-	
+
 	id := strings.TrimSpace(deploymentID)
 	if id == "" {
 		return nil, errors.New("empty deploymentID not allowed")
@@ -175,14 +175,14 @@ func (s *storeImpl) GetServicesByDeployment(ctx datastore.Context, deploymentID 
 		return nil, err
 	}
 
-	defer ctx.Metrics().Stop(ctx.Metrics().Start("servicestore.convert()"))	
+	defer ctx.Metrics().Stop(ctx.Metrics().Start("servicestore.convert()"))
 	return convert(results)
 }
 
 // GetChildServices returns services that are children of the given parent service id
 func (s *storeImpl) GetChildServices(ctx datastore.Context, parentID string) ([]Service, error) {
 	defer ctx.Metrics().Stop(ctx.Metrics().Start("servicestore.GetChildServices()"))
-	
+
 	id := strings.TrimSpace(parentID)
 	if id == "" {
 		return nil, errors.New("empty parent service id not allowed")
@@ -203,7 +203,7 @@ func (s *storeImpl) GetChildServices(ctx datastore.Context, parentID string) ([]
 
 func (s *storeImpl) FindChildService(ctx datastore.Context, deploymentID, parentID, serviceName string) (*Service, error) {
 	defer ctx.Metrics().Stop(ctx.Metrics().Start("servicestore.FindChildService()"))
-	
+
 	parentID = strings.TrimSpace(parentID)
 
 	if deploymentID = strings.TrimSpace(deploymentID); deploymentID == "" {
@@ -262,7 +262,7 @@ func (s *storeImpl) FindTenantByDeploymentID(ctx datastore.Context, deploymentID
 		return nil, err
 	}
 
-	defer ctx.Metrics().Stop(ctx.Metrics().Start("servicestore.convert()"))	
+	defer ctx.Metrics().Stop(ctx.Metrics().Start("servicestore.convert()"))
 	if results.Len() == 0 {
 		return nil, nil
 	} else if svcs, err := convert(results); err != nil {
@@ -274,7 +274,7 @@ func (s *storeImpl) FindTenantByDeploymentID(ctx datastore.Context, deploymentID
 
 func query(ctx datastore.Context, query string) ([]Service, error) {
 	defer ctx.Metrics().Stop(ctx.Metrics().Start("servicestore.query()"))
-	
+
 	q := datastore.NewQuery(ctx)
 	elasticQuery := search.Query().Search(query)
 	search := search.Search("controlplane").Type(kind).Size("50000").Query(elasticQuery)
@@ -284,8 +284,8 @@ func query(ctx datastore.Context, query string) ([]Service, error) {
 	if err != nil {
 		return nil, err
 	}
-	
-	defer ctx.Metrics().Stop(ctx.Metrics().Start("servicestore.convert()"))	
+
+	defer ctx.Metrics().Stop(ctx.Metrics().Start("servicestore.convert()"))
 	return convert(results)
 }
 

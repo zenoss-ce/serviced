@@ -472,6 +472,7 @@ func (c *ServicedCli) services() (data []string) {
 
 // Returns a list of runnable commands for a particular service
 func (c *ServicedCli) serviceRuns(id string) (data []string) {
+	glog.Infof("Calling GetService(%s", id)
 	svc, err := c.driver.GetService(id)
 	if err != nil || svc == nil {
 		return
@@ -489,6 +490,7 @@ func (c *ServicedCli) serviceRuns(id string) (data []string) {
 
 // Returns a list of actionable commands for a particular service
 func (c *ServicedCli) serviceActions(id string) (data []string) {
+	glog.Infof("Calling GetService(%s", id)
 	svc, err := c.driver.GetService(id)
 	if err != nil || svc == nil {
 		return
@@ -600,7 +602,7 @@ func (c *ServicedCli) buildServicePaths(svcs []service.Service) (map[string]stri
 				break // break from inner for loop
 			}
 			glog.Warningf("should not have to retrieve parent service %s", parentID)
-
+			glog.Infof("Calling GetService(%s", parentID)
 			svc, err := c.driver.GetService(parentID)
 			if err != nil || svc == nil {
 				return nil, fmt.Errorf("unable to retrieve service for id:%s %s", parentID, err)
@@ -781,6 +783,7 @@ func (c *ServicedCli) cmdServiceList(ctx *cli.Context) {
 		}
 
 		serviceID := svc.ID
+		glog.Infof("Calling GetService(%s", serviceID)
 		if service, err := c.driver.GetService(serviceID); err != nil {
 			fmt.Fprintln(os.Stderr, err)
 		} else if service == nil {
@@ -1276,6 +1279,7 @@ func (c *ServicedCli) buildRunningServicePaths(rss []dao.RunningService) (map[st
 				break // break from inner for loop
 			}
 
+			glog.Infof("Calling GetService(%s", parentID)
 			svc, err := c.driver.GetService(parentID)
 			if err != nil || svc == nil {
 				return pathmap, fmt.Errorf("unable to retrieve service for id:%s %s", parentID, err)

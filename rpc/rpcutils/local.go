@@ -19,8 +19,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-
-	"github.com/zenoss/glog"
 )
 
 type method struct {
@@ -109,11 +107,11 @@ func (l *localClient) lookup(serviceMethod string) (reflect.Value, reflect.Type,
 }
 
 func (l *localClient) Call(serviceMethod string, args interface{}, reply interface{}, timeout time.Duration) error {
-	glog.V(3).Infof("RPC service method %s", serviceMethod)
 	callChan := make(chan error, 1)
 
 	go func() {
 		method, rType, err := l.lookup(serviceMethod)
+
 		if err != nil {
 			callChan <- err
 			return

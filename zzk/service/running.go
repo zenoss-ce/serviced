@@ -87,6 +87,9 @@ func LoadRunningService(conn client.Connection, serviceID, ssID string) (*dao.Ru
 
 // LoadRunningServicesByHost returns a slice of RunningServices given a host(s)
 func LoadRunningServicesByHost(conn client.Connection, hostIDs ...string) ([]dao.RunningService, error) {
+	if ctx != nil {
+		defer (*ctx).Metrics().Stop((*ctx).Metrics().Start("zzkservice.LoadRunningServicesByHost()"))
+	}
 	var rss []dao.RunningService = make([]dao.RunningService, 0)
 	for _, hostID := range hostIDs {
 		hpth := path.Join("/hosts", hostID, "instances")

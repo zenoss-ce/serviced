@@ -17,6 +17,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/control-center/serviced/datastore"
 	zkimgregistry "github.com/control-center/serviced/dfs/registry"
 	"github.com/control-center/serviced/domain/applicationendpoint"
 	"github.com/control-center/serviced/domain/host"
@@ -33,26 +34,52 @@ import (
 )
 
 func getZZK(f *Facade) ZZK {
-	return &zkf{f}
+	return &zkf{f, nil}
 }
 
 type zkf struct {
-	f *Facade
+	f   *Facade
+	ctx *datastore.Context
 }
 
-func (zk *zkf) UpdateService(svc *service.Service, setLockOnCreate, setLockOnUpdate bool) error {
-	conn, err := zzk.GetLocalConnection(zzk.GeneratePoolPath(svc.PoolID))
+func (zk *zkf) SetContext(ctx_in *datastore.Context) error {
+	zk.ctx = ctx_in
+	return nil
+}
+
+func (zk *zkf) UpdateService(ctx datastore.Context, svc *service.Service, setLockOnCreate, setLockOnUpdate bool) error {
+	defer ctx.Metrics().Stop(ctx.Metrics().Start("zkf.UpdateService()"))
+	zzk.SetContext(&ctx)
+	zkservice.SetContext(&ctx)
+
+	zgpp_a, zgpp_b := ctx.Metrics().Start("zkf.UpdateService->zzk.GeneratePoolPath()")
+	poolpath := zzk.GeneratePoolPath(svc.PoolID)
+	ctx.Metrics().Stop(zgpp_a, zgpp_b)
+
+	zglc_a, zglc_b := ctx.Metrics().Start("zkf.UpdateService->zzk.GetLocalConnection(poolpath)")
+	conn, err := zzk.GetLocalConnection(poolpath)
+	ctx.Metrics().Stop(zglc_a, zglc_b)
 	if err != nil {
 		return err
 	}
-	if err := zkservice.UpdateService(conn, *svc, setLockOnCreate, setLockOnUpdate); err != nil {
+
+	zus_a, zus_b := ctx.Metrics().Start("zkf.UpdateService->zkservice.UpdateService()")
+	err = zkservice.UpdateService(conn, *svc, setLockOnCreate, setLockOnUpdate)
+	ctx.Metrics().Stop(zus_a, zus_b)
+	if err != nil {
 		return err
 	}
+
+	zglc_c, zglc_d := ctx.Metrics().Start("zkf.UpdateService->zzk.GetLocalConnection(root)")
 	rootconn, err := zzk.GetLocalConnection("/")
+	ctx.Metrics().Stop(zglc_c, zglc_d)
 	if err != nil {
 		return err
 	}
-	return zkservice.UpdateServicePublicEndpoints(rootconn, svc)
+	zuspe_a, zuspe_b := ctx.Metrics().Start("zkf.UpdateService->zkservice.UpdateServicePublicEndpoints()")
+	result := zkservice.UpdateServicePublicEndpoints(rootconn, svc)
+	ctx.Metrics().Stop(zuspe_a, zuspe_b)
+	return result
 }
 
 func (zk *zkf) RemoveService(svc *service.Service) error {

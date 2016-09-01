@@ -107,9 +107,9 @@ func (m *Metrics) Stop(timer gometrics.Timer, t time.Time) {
 // Pads the value with units to a given width.
 // padUnits(14, 0.22, 2, "µs") = "0.22µs        "
 func padUnits(width int, value float64, precision int, units string) string {
-    format1 := fmt.Sprintf("%%-%ds", width)
-    format2 := fmt.Sprintf("%%.%df%%s", precision)
-    return fmt.Sprintf(format1, fmt.Sprintf(format2, value, units))
+	format1 := fmt.Sprintf("%%-%ds", width)
+	format2 := fmt.Sprintf("%%.%df%%s", precision)
+	return fmt.Sprintf(format1, fmt.Sprintf(format2, value, units))
 }
 
 // Log the current timers.  Turns off metric loggina and clears
@@ -127,12 +127,15 @@ func (m *Metrics) Log(scale time.Duration, l *log.Logger) {
 		case gometrics.Timer:
 			t := metric.Snapshot()
 			ps := t.Percentiles([]float64{0.5, 0.75, 0.95, 0.99, 0.999})
-			l.Printf("%-40s count %-9d min %s max %s mean %s stddev %s median %s",
-					 name, t.Count(), padUnits(14, float64(t.Min())/du, 2, units),
-					 padUnits(14, float64(t.Max())/du, 2, units),
-					 padUnits(14, t.Mean()/du, 2, units),
-					 padUnits(14, t.StdDev()/du, 2, units),
-					 padUnits(14, ps[0]/du, 2, units))
+			l.Printf("%-40s count %-9d sum %s min %s max %s mean %s stddev %s median %s",
+				name,
+				t.Count(),
+				padUnits(14, float64(t.Sum())/du, 2, units),
+				padUnits(14, float64(t.Min())/du, 2, units),
+				padUnits(14, float64(t.Max())/du, 2, units),
+				padUnits(14, t.Mean()/du, 4, units),
+				padUnits(14, t.StdDev()/du, 2, units),
+				padUnits(14, ps[0]/du, 4, units))
 		}
 	})
 

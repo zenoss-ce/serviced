@@ -13,6 +13,8 @@
 
 package client
 
+import "github.com/control-center/serviced/datastore"
+
 // Driver is an interface that allows the coordination.Client
 // to get a connection from a driver
 type Driver interface {
@@ -68,4 +70,5 @@ type Connection interface {
 	Set(path string, node Node) error
 	NewLock(path string) (Lock, error)
 	NewLeader(path string) (Leader, error)
+	SetContext(*datastore.Context)
 }

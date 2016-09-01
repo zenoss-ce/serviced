@@ -14,6 +14,7 @@
 package facade
 
 import (
+	"github.com/control-center/serviced/datastore"
 	"github.com/control-center/serviced/domain/applicationendpoint"
 	"github.com/control-center/serviced/domain/host"
 	"github.com/control-center/serviced/domain/pool"
@@ -25,7 +26,7 @@ import (
 )
 
 type ZZK interface {
-	UpdateService(svc *service.Service, setLockOnCreate, setLockOnUpdate bool) error
+	UpdateService(ctx datastore.Context, svc *service.Service, setLockOnCreate, setLockOnUpdate bool) error
 	RemoveService(svc *service.Service) error
 	WaitService(svc *service.Service, state service.DesiredState, cancel <-chan interface{}) error
 	GetServiceStates(poolID string, states *[]servicestate.ServiceState, serviceIDs ...string) error
@@ -49,6 +50,7 @@ type ZZK interface {
 	GetServiceEndpoints(tenantID, serviceID string, endpoints *[]applicationendpoint.ApplicationEndpoint) error
 	GetServiceStates2(poolID, serviceID string) ([]zkservice.State, error) // FIXME: update when integration is complete
 	GetHostStates(poolID, hostID string) ([]zkservice.State, error)
+	SetContext(*datastore.Context) error
 }
 
 func GetFacadeZZK(f *Facade) ZZK {

@@ -20,6 +20,7 @@ import (
 
 	zklib "github.com/control-center/go-zookeeper/zk"
 	"github.com/control-center/serviced/coordinator/client"
+	"github.com/control-center/serviced/datastore"
 )
 
 // Connection is a Zookeeper based implementation of client.Connection.
@@ -29,13 +30,21 @@ type Connection struct {
 	basePath string
 	onClose  func(int)
 	id       int
+	ctx      *datastore.Context
 }
 
 // Assert that Connection implements client.Connection.
 var _ client.Connection = &Connection{}
 
+func (c *Connection) SetContext(ctx_in *datastore.Context) {
+	c.ctx = ctx_in
+}
+
 // IsClosed returns connection closed error if true, otherwise returns nil.
 func (c *Connection) isClosed() error {
+	if c.ctx != nil {
+		defer (*c.ctx).Metrics().Stop((*c.ctx).Metrics().Start("Connection.isClosed()"))
+	}
 	if c.conn == nil {
 		return client.ErrConnectionClosed
 	}
@@ -45,6 +54,9 @@ func (c *Connection) isClosed() error {
 // Close closes the client connection to zookeeper. Calling close twice will
 // result in a no-op.
 func (c *Connection) Close() {
+	if c.ctx != nil {
+		defer (*c.ctx).Metrics().Stop((*c.ctx).Metrics().Start("Connection.Close()"))
+	}
 	c.Lock()
 	defer c.Unlock()
 	if c.conn != nil {
@@ -82,6 +94,9 @@ func (c *Connection) SetOnClose(onClose func(int)) {
 
 // NewTransaction creates a new transaction object
 func (c *Connection) NewTransaction() client.Transaction {
+	if c.ctx != nil {
+		defer (*c.ctx).Metrics().Stop((*c.ctx).Metrics().Start("Connection.NewTransaction()"))
+	}
 	return &Transaction{
 		conn: c,
 		ops:  []multiReq{},
@@ -90,6 +105,9 @@ func (c *Connection) NewTransaction() client.Transaction {
 
 // NewLock creates a new lock object
 func (c *Connection) NewLock(p string) (client.Lock, error) {
+	if c.ctx != nil {
+		defer (*c.ctx).Metrics().Stop((*c.ctx).Metrics().Start("Connection.NewLock()"))
+	}
 	c.RLock()
 	defer c.RUnlock()
 	if err := c.isClosed(); err != nil {
@@ -104,6 +122,9 @@ func (c *Connection) NewLock(p string) (client.Lock, error) {
 // NewLeader returns a managed leader object at the given path bound to the
 // current connection.
 func (c *Connection) NewLeader(p string) (client.Leader, error) {
+	if c.ctx != nil {
+		defer (*c.ctx).Metrics().Stop((*c.ctx).Metrics().Start("Connection.NewLeader()"))
+	}
 	c.RLock()
 	defer c.RUnlock()
 	if err := c.isClosed(); err != nil {
@@ -114,6 +135,9 @@ func (c *Connection) NewLeader(p string) (client.Leader, error) {
 
 // Create adds a node at the specified path
 func (c *Connection) Create(path string, node client.Node) error {
+	if c.ctx != nil {
+		defer (*c.ctx).Metrics().Stop((*c.ctx).Metrics().Start("Connection.Create()"))
+	}
 	c.RLock()
 	defer c.RUnlock()
 	if err := c.isClosed(); err != nil {
@@ -128,6 +152,9 @@ func (c *Connection) Create(path string, node client.Node) error {
 // CreateIfExists adds a node at the specified path if the dirpath already
 // exists.
 func (c *Connection) CreateIfExists(path string, node client.Node) error {
+	if c.ctx != nil {
+		defer (*c.ctx).Metrics().Stop((*c.ctx).Metrics().Start("Connection.CreateIfExists()"))
+	}
 	c.RLock()
 	defer c.RUnlock()
 	if err := c.isClosed(); err != nil {
@@ -226,6 +253,9 @@ func (c *Connection) createEphemeral(p string, node client.Node) (string, error)
 
 // Set assigns a value to an existing node at a given path
 func (c *Connection) Set(path string, node client.Node) error {
+	if c.ctx != nil {
+		defer (*c.ctx).Metrics().Stop((*c.ctx).Metrics().Start("Connection.Set()"))
+	}
 	c.RLock()
 	defer c.RUnlock()
 	if err := c.isClosed(); err != nil {
@@ -235,6 +265,9 @@ func (c *Connection) Set(path string, node client.Node) error {
 }
 
 func (c *Connection) set(p string, node client.Node) error {
+	if c.ctx != nil {
+		defer (*c.ctx).Metrics().Stop((*c.ctx).Metrics().Start("Connection.set()"))
+	}
 	bytes, err := json.Marshal(node)
 	if err != nil {
 		return client.ErrSerialization
@@ -255,6 +288,9 @@ func (c *Connection) set(p string, node client.Node) error {
 
 // Delete recursively removes a path and its children
 func (c *Connection) Delete(path string) error {
+	if c.ctx != nil {
+		defer (*c.ctx).Metrics().Stop((*c.ctx).Metrics().Start("Connection.Delete()"))
+	}
 	c.RLock()
 	defer c.RUnlock()
 	if err := c.isClosed(); err != nil {
@@ -264,6 +300,9 @@ func (c *Connection) Delete(path string) error {
 }
 
 func (c *Connection) delete(p string) error {
+	if c.ctx != nil {
+		defer (*c.ctx).Metrics().Stop((*c.ctx).Metrics().Start("Connection.delete()"))
+	}
 	children, err := c.children(p)
 	if err != nil {
 		return err
@@ -283,6 +322,9 @@ func (c *Connection) delete(p string) error {
 
 // Exists returns true if the path exists
 func (c *Connection) Exists(path string) (bool, error) {
+	if c.ctx != nil {
+		defer (*c.ctx).Metrics().Stop((*c.ctx).Metrics().Start("Connection.Exists()"))
+	}
 	c.RLock()
 	defer c.RUnlock()
 	if err := c.isClosed(); err != nil {
@@ -292,6 +334,9 @@ func (c *Connection) Exists(path string) (bool, error) {
 }
 
 func (c *Connection) exists(p string) (bool, error) {
+	if c.ctx != nil {
+		defer (*c.ctx).Metrics().Stop((*c.ctx).Metrics().Start("Connection.exists()"))
+	}
 	exists, _, err := c.conn.Exists(path.Join(c.basePath, p))
 	if err == zklib.ErrNoNode {
 		return false, nil
@@ -301,6 +346,9 @@ func (c *Connection) exists(p string) (bool, error) {
 
 // ExistsW sets a watch on a node and alerts whenever it is added or removed.
 func (c *Connection) ExistsW(path string, cancel <-chan struct{}) (bool, <-chan client.Event, error) {
+	if c.ctx != nil {
+		defer (*c.ctx).Metrics().Stop((*c.ctx).Metrics().Start("Connection.ExistsW()"))
+	}
 	c.RLock()
 	defer c.RUnlock()
 	if err := c.isClosed(); err != nil {
@@ -310,6 +358,9 @@ func (c *Connection) ExistsW(path string, cancel <-chan struct{}) (bool, <-chan 
 }
 
 func (c *Connection) existsW(p string, cancel <-chan struct{}) (bool, <-chan client.Event, error) {
+	if c.ctx != nil {
+		defer (*c.ctx).Metrics().Stop((*c.ctx).Metrics().Start("Connection.existsW()"))
+	}
 	p = path.Join(c.basePath, p)
 	ok, _, ch, err := c.conn.ExistsW(p)
 	if err != nil {
@@ -320,6 +371,9 @@ func (c *Connection) existsW(p string, cancel <-chan struct{}) (bool, <-chan cli
 
 // Get returns the node at the given path.
 func (c *Connection) Get(path string, node client.Node) error {
+	if c.ctx != nil {
+		defer (*c.ctx).Metrics().Stop((*c.ctx).Metrics().Start("Connection.Get()"))
+	}
 	c.RLock()
 	defer c.RUnlock()
 	if err := c.isClosed(); err != nil {
@@ -329,6 +383,9 @@ func (c *Connection) Get(path string, node client.Node) error {
 }
 
 func (c *Connection) get(p string, node client.Node) (err error) {
+	if c.ctx != nil {
+		defer (*c.ctx).Metrics().Stop((*c.ctx).Metrics().Start("Connection.get()"))
+	}
 	p = path.Join(c.basePath, p)
 	bytes, stat, err := c.conn.Get(p)
 	if err != nil {
@@ -348,6 +405,9 @@ func (c *Connection) get(p string, node client.Node) (err error) {
 // GetW returns the node at the given path as well as a channel to watch for
 // events on that node.
 func (c *Connection) GetW(path string, node client.Node, cancel <-chan struct{}) (<-chan client.Event, error) {
+	if c.ctx != nil {
+		defer (*c.ctx).Metrics().Stop((*c.ctx).Metrics().Start("Connection.GetW()"))
+	}
 	c.RLock()
 	defer c.RUnlock()
 	if err := c.isClosed(); err != nil {
@@ -357,6 +417,9 @@ func (c *Connection) GetW(path string, node client.Node, cancel <-chan struct{})
 }
 
 func (c *Connection) getW(p string, node client.Node, cancel <-chan struct{}) (<-chan client.Event, error) {
+	if c.ctx != nil {
+		defer (*c.ctx).Metrics().Stop((*c.ctx).Metrics().Start("Connection.getW()"))
+	}
 	p = path.Join(c.basePath, p)
 	bytes, stat, ch, err := c.conn.GetW(p)
 	if err != nil {
@@ -372,6 +435,9 @@ func (c *Connection) getW(p string, node client.Node, cancel <-chan struct{}) (<
 }
 
 func (c *Connection) toClientEvent(ch <-chan zklib.Event, cancel <-chan struct{}) <-chan client.Event {
+	if c.ctx != nil {
+		defer (*c.ctx).Metrics().Stop((*c.ctx).Metrics().Start("Connection.toClientEvent()"))
+	}
 	evCh := make(chan client.Event, 1)
 	go func() {
 		select {
@@ -389,6 +455,9 @@ func (c *Connection) toClientEvent(ch <-chan zklib.Event, cancel <-chan struct{}
 }
 
 func (c *Connection) cancelEvent(ch <-chan zklib.Event) {
+	if c.ctx != nil {
+		defer (*c.ctx).Metrics().Stop((*c.ctx).Metrics().Start("Connection.cancelEvent()"))
+	}
 	c.RLock()
 	defer c.RUnlock()
 	if err := c.isClosed(); err != nil {
@@ -399,6 +468,9 @@ func (c *Connection) cancelEvent(ch <-chan zklib.Event) {
 
 // Children returns the children of the node at the given path.
 func (c *Connection) Children(path string) ([]string, error) {
+	if c.ctx != nil {
+		defer (*c.ctx).Metrics().Stop((*c.ctx).Metrics().Start("Connection.Children()"))
+	}
 	c.RLock()
 	defer c.RUnlock()
 	if err := c.isClosed(); err != nil {
@@ -408,6 +480,9 @@ func (c *Connection) Children(path string) ([]string, error) {
 }
 
 func (c *Connection) children(p string) ([]string, error) {
+	if c.ctx != nil {
+		defer (*c.ctx).Metrics().Stop((*c.ctx).Metrics().Start("Connection.children()"))
+	}
 	pth := path.Join(c.basePath, p)
 	children, _, err := c.conn.Children(pth)
 	if err != nil {
@@ -419,6 +494,9 @@ func (c *Connection) children(p string) ([]string, error) {
 // ChildrenW returns the children of the node at the given path as well as a
 // channel to watch for events on that node.
 func (c *Connection) ChildrenW(path string, cancel <-chan struct{}) ([]string, <-chan client.Event, error) {
+	if c.ctx != nil {
+		defer (*c.ctx).Metrics().Stop((*c.ctx).Metrics().Start("Connection.ChildrenW()"))
+	}
 	c.RLock()
 	defer c.RUnlock()
 	if err := c.isClosed(); err != nil {
@@ -428,6 +506,9 @@ func (c *Connection) ChildrenW(path string, cancel <-chan struct{}) ([]string, <
 }
 
 func (c *Connection) childrenW(p string, cancel <-chan struct{}) ([]string, <-chan client.Event, error) {
+	if c.ctx != nil {
+		defer (*c.ctx).Metrics().Stop((*c.ctx).Metrics().Start("Connection.childrenW()"))
+	}
 	p = path.Join(c.basePath, p)
 	children, _, ch, err := c.conn.ChildrenW(p)
 	if err != nil {

@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/control-center/serviced/coordinator/client"
+	"github.com/control-center/serviced/datastore"
 	"github.com/zenoss/glog"
 )
 
@@ -35,7 +36,12 @@ var (
 	ErrNotInitialized = errors.New("client not initialized")
 	manager           = make(map[string]*zclient)
 	managerLock       = &sync.RWMutex{}
+	ctx               *datastore.Context
 )
+
+func SetContext(ctx_in *datastore.Context) {
+	ctx = ctx_in
+}
 
 // GetConnection describes a generic function for acquiring a connection object
 type GetConnection func(string) (client.Connection, error)
@@ -86,6 +92,9 @@ type zconn struct {
 
 // GeneratePoolPath generates the path for a pool-based connection
 func GeneratePoolPath(poolID string) string {
+	if ctx != nil {
+		defer (*ctx).Metrics().Stop((*ctx).Metrics().Start("[zzk].GeneratePoolPath()"))
+	}
 	return path.Join("/pools", poolID)
 }
 
@@ -94,14 +103,17 @@ func InitializeLocalClient(client *client.Client) {
 	managerLock.Lock()
 	defer managerLock.Unlock()
 	manager[local] = &zclient{
-		client: client,
+		client:          client,
 		connectionsLock: sync.RWMutex{},
-		connections: make(map[string]*zconn),
+		connections:     make(map[string]*zconn),
 	}
 }
 
 // GetLocalConnection acquires a connection from the local zookeeper client
 func GetLocalConnection(path string) (client.Connection, error) {
+	if ctx != nil {
+		defer (*ctx).Metrics().Stop((*ctx).Metrics().Start("zzk.GetLocalConnection()"))
+	}
 	managerLock.RLock()
 	localclient, ok := manager[local]
 	managerLock.RUnlock()
@@ -116,9 +128,9 @@ func InitializeRemoteClient(client *client.Client) {
 	managerLock.Lock()
 	defer managerLock.Unlock()
 	manager[remote] = &zclient{
-		client: client,
+		client:          client,
 		connectionsLock: sync.RWMutex{},
-		connections: make(map[string]*zconn),
+		connections:     make(map[string]*zconn),
 	}
 }
 

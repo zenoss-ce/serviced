@@ -23,6 +23,7 @@ import (
 
 	"github.com/control-center/serviced/coordinator/client"
 	"github.com/control-center/serviced/dao"
+	"github.com/control-center/serviced/datastore"
 	"github.com/control-center/serviced/domain/host"
 	"github.com/control-center/serviced/domain/service"
 	"github.com/control-center/serviced/domain/servicestate"
@@ -37,6 +38,11 @@ const (
 )
 
 var ErrServiceIsRunning = errors.New("can only delete services in a stopped state")
+var ctx *datastore.Context
+
+func SetContext(ctx_in *datastore.Context) {
+	ctx = ctx_in
+}
 
 type HasRunningInstances struct {
 	ServiceID string
@@ -367,6 +373,9 @@ func (l *ServiceListener) pause(rss []dao.RunningService) {
 
 // StartService schedules a service to start
 func StartService(conn client.Connection, serviceID string) error {
+	if ctx != nil {
+		defer (*ctx).Metrics().Stop((*ctx).Metrics().Start("zzk.StartService()"))
+	}
 	glog.Infof("Scheduling service %s to start", serviceID)
 	var node ServiceNode
 	path := servicepath(serviceID)
@@ -380,6 +389,9 @@ func StartService(conn client.Connection, serviceID string) error {
 
 // StopService schedules a service to stop
 func StopService(conn client.Connection, serviceID string) error {
+	if ctx != nil {
+		defer (*ctx).Metrics().Stop((*ctx).Metrics().Start("zzk.StopService()"))
+	}
 	glog.Infof("Scheduling service %s to stop", serviceID)
 	var node ServiceNode
 	path := servicepath(serviceID)
@@ -428,6 +440,10 @@ func SyncServices(conn client.Connection, svcs []service.Service) error {
 
 // UpdateService updates a service node if it exists, otherwise creates it
 func UpdateService(conn client.Connection, svcData service.Service, setLockOnCreate, setLockOnUpdate bool) error {
+	if ctx != nil {
+		defer (*ctx).Metrics().Stop((*ctx).Metrics().Start("[zzk].UpdateService()"))
+	}
+	conn.SetContext(ctx)
 	// svc is the service to be marshalled into zookeeper
 	svc := &service.Service{
 		ID:              svcData.ID,
@@ -454,6 +470,7 @@ func UpdateService(conn client.Connection, svcData service.Service, setLockOnCre
 	}
 	svcNodePath := servicepath(svc.ID)
 	svcNode := ServiceNode{Service: &service.Service{}}
+
 	if err := conn.Get(svcNodePath, &svcNode); err == client.ErrNoNode {
 		// the node does not exist, so create it
 		// setLockOnCreate sets the lock as the node is created.
@@ -482,6 +499,9 @@ func UpdateService(conn client.Connection, svcData service.Service, setLockOnCre
 
 // RemoveService deletes a service
 func RemoveService(conn client.Connection, serviceID string) error {
+	if ctx != nil {
+		defer (*ctx).Metrics().Stop((*ctx).Metrics().Start("zzk.RemoveService()"))
+	}
 	// Check if the path exists
 	if exists, err := zzk.PathExists(conn, servicepath(serviceID)); err != nil {
 		return err
@@ -501,6 +521,9 @@ func RemoveService(conn client.Connection, serviceID string) error {
 
 // WaitService waits for a particular service's instances to reach a particular state
 func WaitService(shutdown <-chan interface{}, conn client.Connection, serviceID string, desiredState service.DesiredState) error {
+	if ctx != nil {
+		defer (*ctx).Metrics().Stop((*ctx).Metrics().Start("zzk.WaitService()"))
+	}
 	done := make(chan struct{})
 	defer func(channel *chan struct{}) { close(*channel) }(&done)
 	for {
