@@ -23,16 +23,22 @@ var (
 	ErrIdentityTokenExpired = errors.New("Identity token expired")
 	// ErrIdentityTokenBadSig is thrown when an identity token has a bad signature
 	ErrIdentityTokenBadSig = errors.New("Identity token signature cannot be verified")
-	// ErrNotRSAPublicKey is thrown when a key is not an RSA public key and needs to be
-	ErrNotRSAPublicKey = errors.New("Not an RSA public key")
-	// ErrNotRSAPrivateKey is thrown when a key is not an RSA private key and needs to be
-	ErrNotRSAPrivateKey = errors.New("Not an RSA private key")
-	// ErrNotPEMEncoded is thrown when bytes are not PEM encoded and need to be
-	ErrNotPEMEncoded = errors.New("Not PEM encoded")
+	// ErrNoPublicKey is thrown when no public key is available to verify a signature
+	ErrNoPublicKey = errors.New("Cannot retrieve public key to verify signature")
+	// ErrInvalidSigningMethod is thrown when an identity token is not signed with the correct method
+	ErrInvalidSigningMethod = errors.New("Identity token signing method was not RSAPSS")
+	// ErrInvalidIdentityTokenClaims is thrown when an identity token does not have required claims
+	ErrInvalidIdentityTokenClaims = errors.New("Identity token is missing required claims")
 
 	// Devs: Feel free to add more, or replace those above, but define errors in a nice well-known place
 	// TODO: Remove this comment
 )
+
+// SignerLookup is a function that can look up a signer given a string ID
+type SignerLookup func(id string) (Signer, error)
+
+// VerifierLookup is a function that can look up a verifier given a string ID
+type VerifierLookup func(id string) (Verifier, error)
 
 // Signer is used to sign a message
 type Signer interface {

@@ -13,7 +13,10 @@
 
 package auth
 
-import "crypto"
+import (
+	"crypto"
+	"crypto/rsa"
+)
 
 var (
 	// Verify JWTIdentity implements the Identity interface
@@ -33,13 +36,21 @@ type jwtIdentity struct {
 	PubKey      string `json:"key,omitempty"`
 }
 
-func ParseJWTIdentity(token string, keystore KeyStore) Identity {
-	token, err := jwt.ParseWithClaims(token, &jwtIdentity{}, func(token *jwt.Token) {
+type RSAPubKeyLookup func(keyid string) *rsa.PublicKey
+
+func ParseJWTIdentity(token string, masterPubKey *rsa.PublicKey) Identity {
+	token, err := jwt.ParseWithClaims(token, &jwtIdentity{}, func(token *jwt.Token) (interface{}, error) {
 		// Validate the algorithm matches the keystore
+		if _, ok := token.Method.(*jwt.SigningMethodRSAPSS); !ok {
+			return nil, ErrInvalidSigningMethod
+		}
+		return masterPubKey, nil
 	})
 }
 
 func (id *jwtIdentity) Valid() error {
+	vErr := new(jwt.ValidationError)
+	now := jwt.TimeFunc().UTC().Unix()
 
 }
 
