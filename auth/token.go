@@ -17,14 +17,29 @@ import "crypto"
 
 var (
 	// Verify JWTIdentity implements the Identity interface
-	_ Identity = &jwtIdentity{}
+	_ Identity   = &jwtIdentity{}
+	_ jwt.Claims = &jwtIdentity{}
 )
 
 // jwtIdentity is an implementation of the Identity interface based on a JSON
 // web token.
-type jwtIdentity struct{}
+type jwtIdentity struct {
+	Host        string `json:"hid,omitempty"`
+	Pool        string `json:"pid,omitempty"`
+	ExpiresAt   int64  `json:"exp,omitempty"`
+	IssuedAt    int64  `json:"iat,omitempty"`
+	AdminAccess bool   `json:"adm,omitempty"`
+	DFSAccess   bool   `json:"dfs,omitempty"`
+	PubKey      string `json:"key,omitempty"`
+}
 
-func (id *jwtIdentity) Verify() bool {
+func ParseJWTIdentity(token string, keystore KeyStore) Identity {
+	token, err := jwt.ParseWithClaims(token, &jwtIdentity{}, func(token *jwt.Token) {
+		// Validate the algorithm matches the keystore
+	})
+}
+
+func (id *jwtIdentity) Valid() error {
 
 }
 
