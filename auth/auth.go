@@ -52,6 +52,7 @@ type Signer interface {
 
 // Verifier is used to verify a signed message
 type Verifier interface {
+	//l
 	Verify(message []byte, signature []byte) error
 }
 

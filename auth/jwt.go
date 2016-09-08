@@ -15,6 +15,7 @@ package auth
 
 import (
 	"crypto/rsa"
+	"time"
 
 	jwt "github.com/dgrijalva/jwt-go"
 )
@@ -54,6 +55,19 @@ func ParseJWTIdentity(token string, masterPubKey *rsa.PublicKey) (Identity, erro
 		return claims, nil
 	}
 	return nil, ErrIdentityTokenBadSig
+}
+
+// CreateJWTIdentity returns a signed string
+func CreateJWTIdentity(hostID, poolID string, admin, dfs bool, pubkey *rsa.PublicKey, expiration time.Duration) (string, error) {
+	now := jwt.TimeFunc().UTC()
+	claims := &jwtIdentity{
+		Host:        hostID,
+		Pool:        poolID,
+		ExpiresAt:   now.Add(expiration).Unix(),
+		IssuedAt:    now.Unix(),
+		AdminAccess: admin,
+		DFSAccess:   dfs,
+	}
 }
 
 func (id *jwtIdentity) Valid() error {
