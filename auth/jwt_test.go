@@ -15,8 +15,36 @@
 
 package auth_test
 
-import . "gopkg.in/check.v1"
+import (
+	"time"
 
-func (s *TestAuthSuite) TestTokenGeneration(c *C) {
-	c.Assert(true, Equals, true)
+	"github.com/control-center/serviced/auth"
+	. "gopkg.in/check.v1"
+)
+
+func (s *TestAuthSuite) TestIdentityHappyPath(c *C) {
+	pubkey, _ := auth.RSAPublicKeyFromPEM(auth.DevPubKeyPEM)
+	privkey, _ := auth.RSAPrivateKeyFromPEM(auth.DevPrivKeyPEM)
+	token, err := auth.CreateJWTIdentity("host", "pool", true, false, pubkey, time.Minute, privkey)
+
+	c.Assert(err, IsNil)
+
+	identity, err := auth.ParseJWTIdentity(token, pubkey)
+	c.Assert(err, IsNil)
+
+	c.Assert(identity.HostID(), Equals, "host")
+	c.Assert(identity.PoolID(), Equals, "pool")
+	c.Assert(identity.Expired(), Equals, false)
+	c.Assert(identity.HasAdminAccess(), Equals, true)
+	c.Assert(identity.HasDFSAccess(), Equals, false)
+
+	signer, _ := auth.RSASigner(privkey)
+	message := []byte("this is a message")
+	sig, _ := signer.Sign(message)
+
+	verifier, err := identity.Verifier()
+	c.Assert(err, IsNil)
+
+	err = verifier.Verify(message, sig)
+	c.Assert(err, IsNil)
 }

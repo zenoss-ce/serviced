@@ -58,8 +58,12 @@ func ParseJWTIdentity(token string, masterPubKey *rsa.PublicKey) (Identity, erro
 }
 
 // CreateJWTIdentity returns a signed string
-func CreateJWTIdentity(hostID, poolID string, admin, dfs bool, pubkey *rsa.PublicKey, expiration time.Duration) (string, error) {
+func CreateJWTIdentity(hostID, poolID string, admin, dfs bool, pubkey *rsa.PublicKey, expiration time.Duration, masterPrivKey *rsa.PrivateKey) (string, error) {
 	now := jwt.TimeFunc().UTC()
+	pem, err := PEMFromRSAPublicKey(pubkey, nil)
+	if err != nil {
+		return "", err
+	}
 	claims := &jwtIdentity{
 		Host:        hostID,
 		Pool:        poolID,
@@ -67,7 +71,10 @@ func CreateJWTIdentity(hostID, poolID string, admin, dfs bool, pubkey *rsa.Publi
 		IssuedAt:    now.Unix(),
 		AdminAccess: admin,
 		DFSAccess:   dfs,
+		PubKey:      string(pem),
 	}
+	token := jwt.NewWithClaims(jwt.SigningMethodPS256, claims)
+	return token.SignedString(masterPrivKey)
 }
 
 func (id *jwtIdentity) Valid() error {
