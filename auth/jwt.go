@@ -37,8 +37,7 @@ type jwtIdentity struct {
 	PubKey      string `json:"key,omitempty"`
 }
 
-type RSAPubKeyLookup func(keyid string) *rsa.PublicKey
-
+// ParseJWTIdentity parses a JSON Web Token string, verifying that it was signed by the master.
 func ParseJWTIdentity(token string, masterPubKey *rsa.PublicKey) (Identity, error) {
 	claims := &jwtIdentity{}
 	parsed, err := jwt.ParseWithClaims(token, claims, func(token *jwt.Token) (interface{}, error) {
