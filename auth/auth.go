@@ -13,14 +13,13 @@
 
 package auth
 
-import (
-	"crypto"
-	"errors"
-)
+import "errors"
 
 var (
 	// ErrIdentityTokenExpired is thrown when an identity token is expired
 	ErrIdentityTokenExpired = errors.New("Identity token expired")
+	// ErrIdentityTokenNotValidYet is thrown when an identity token is used before its issue time
+	ErrIdentityTokenNotValidYet = errors.New("Identity token used before issue time")
 	// ErrIdentityTokenBadSig is thrown when an identity token has a bad signature
 	ErrIdentityTokenBadSig = errors.New("Identity token signature cannot be verified")
 	// ErrNoPublicKey is thrown when no public key is available to verify a signature
@@ -29,6 +28,12 @@ var (
 	ErrInvalidSigningMethod = errors.New("Identity token signing method was not RSAPSS")
 	// ErrInvalidIdentityTokenClaims is thrown when an identity token does not have required claims
 	ErrInvalidIdentityTokenClaims = errors.New("Identity token is missing required claims")
+	// ErrNotRSAPublicKey is thrown when a key is not an RSA public key and needs to be
+	ErrNotRSAPublicKey = errors.New("Not an RSA public key")
+	// ErrNotRSAPrivateKey is thrown when a key is not an RSA private key and needs to be
+	ErrNotRSAPrivateKey = errors.New("Not an RSA private key")
+	// ErrNotPEMEncoded is thrown when bytes are not PEM encoded and need to be
+	ErrNotPEMEncoded = errors.New("Not PEM encoded")
 
 	// Devs: Feel free to add more, or replace those above, but define errors in a nice well-known place
 	// TODO: Remove this comment
@@ -59,5 +64,5 @@ type Identity interface {
 	PoolID() string
 	HasAdminAccess() bool
 	HasDFSAccess() bool
-	PublicKey() crypto.PublicKey
+	Verifier() (Verifier, error)
 }

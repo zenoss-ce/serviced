@@ -14,8 +14,9 @@
 package auth
 
 import (
-	"crypto"
 	"crypto/rsa"
+
+	jwt "github.com/dgrijalva/jwt-go"
 )
 
 var (
@@ -38,42 +39,61 @@ type jwtIdentity struct {
 
 type RSAPubKeyLookup func(keyid string) *rsa.PublicKey
 
-func ParseJWTIdentity(token string, masterPubKey *rsa.PublicKey) Identity {
-	token, err := jwt.ParseWithClaims(token, &jwtIdentity{}, func(token *jwt.Token) (interface{}, error) {
+func ParseJWTIdentity(token string, masterPubKey *rsa.PublicKey) (Identity, error) {
+	claims := &jwtIdentity{}
+	parsed, err := jwt.ParseWithClaims(token, claims, func(token *jwt.Token) (interface{}, error) {
 		// Validate the algorithm matches the keystore
 		if _, ok := token.Method.(*jwt.SigningMethodRSAPSS); !ok {
 			return nil, ErrInvalidSigningMethod
 		}
 		return masterPubKey, nil
 	})
+	if err != nil {
+		return nil, err
+	}
+	if claims, ok := parsed.Claims.(*jwtIdentity); ok && parsed.Valid {
+		return claims, nil
+	}
+	return nil, ErrIdentityTokenBadSig
 }
 
 func (id *jwtIdentity) Valid() error {
-	vErr := new(jwt.ValidationError)
-	now := jwt.TimeFunc().UTC().Unix()
 
+	if id.Expired() {
+		return ErrIdentityTokenExpired
+	}
+
+	now := jwt.TimeFunc().UTC().Unix()
+	if now < id.IssuedAt {
+		return ErrIdentityTokenNotValidYet
+	}
+
+	return nil
 }
 
 func (id *jwtIdentity) Expired() bool {
-
+	now := jwt.TimeFunc().UTC().Unix()
+	return now >= id.ExpiresAt
 }
 
 func (id *jwtIdentity) HostID() string {
+	return id.Host
 
 }
 
 func (id *jwtIdentity) PoolID() string {
+	return id.Pool
 
 }
 
 func (id *jwtIdentity) HasAdminAccess() bool {
-
+	return id.AdminAccess
 }
 
 func (id *jwtIdentity) HasDFSAccess() bool {
-
+	return id.DFSAccess
 }
 
-func (id *jwtIdentity) PublicKey() crypto.PublicKey {
-
+func (id *jwtIdentity) Verifier() (Verifier, error) {
+	return RSAVerifierFromPEM([]byte(id.PubKey))
 }
