@@ -14,6 +14,9 @@
 package master
 
 import (
+	"time"
+
+	"github.com/control-center/serviced/auth"
 	"github.com/control-center/serviced/domain/host"
 
 	"errors"
@@ -74,5 +77,25 @@ func (s *Server) FindHostsInPool(poolID string, hostReply *[]host.Host) error {
 		return err
 	}
 	*hostReply = hosts
+	return nil
+}
+
+type HostAuthenticationRequest struct {
+	HostID    string
+	Signature []byte
+}
+
+func (s *Server) AuthenticateHost(req *HostAuthenticationRequest, token string) error {
+	// TODO: Verify the request
+	host, err := s.f.GetHost(s.context(), req.HostID)
+	if err != nil {
+		return err
+	}
+	signed, err := auth.CreateJWTIdentity(host.ID, host.PoolID, true, true,
+		auth.DevPubKeyPEM, time.Duration(10*time.Minute), auth.DevPrivKeyPEM)
+	if err != nil {
+		return err
+	}
+	*token = *signed
 	return nil
 }
