@@ -97,6 +97,10 @@ type HostAuthenticationResponse struct {
 }
 
 func (s *Server) AuthenticateHost(req *HostAuthenticationRequest, token *string) error {
+	keypem, err := s.f.GetHostKey(req.HostID)
+	if err != nil {
+		return err
+	}
 	// TODO: Verify the request
 	host, err := s.f.GetHost(s.context(), req.HostID)
 	if err != nil {
