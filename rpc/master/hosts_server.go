@@ -87,10 +87,16 @@ func (s *Server) FindHostsInPool(poolID string, hostReply *[]host.Host) error {
 
 type HostAuthenticationRequest struct {
 	HostID    string
+	Timestamp int64
 	Signature []byte
 }
 
-func (s *Server) AuthenticateHost(req *HostAuthenticationRequest, token string) error {
+type HostAuthenticationResponse struct {
+	Token   string
+	Expires int64
+}
+
+func (s *Server) AuthenticateHost(req *HostAuthenticationRequest, token *string) error {
 	// TODO: Verify the request
 	host, err := s.f.GetHost(s.context(), req.HostID)
 	if err != nil {
@@ -101,6 +107,6 @@ func (s *Server) AuthenticateHost(req *HostAuthenticationRequest, token string) 
 	if err != nil {
 		return err
 	}
-	*token = *signed
+	*token = signed
 	return nil
 }
