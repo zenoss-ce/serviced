@@ -102,6 +102,13 @@ func VerifyMasterSignature(message, signature []byte) error {
 	return delegateKeys.Verify(message, signature)
 }
 
+func getMasterPrivateKey() (crypto.PrivateKey, error) {
+	if masterKeys.private == nil {
+		return nil, ErrNoPrivateKey
+	}
+	return masterKeys.private, nil
+}
+
 // GetMasterPublicKey() returns the public key of the master
 //  If the host keys have not been loaded yet, it checks to see if
 //  master keys have been loaded.  If neither exists, returns ErrNoPublicKey
@@ -131,7 +138,9 @@ func LoadDelegateKeysFromFile(filename string) error {
 //  write them to disk.
 func CreateOrLoadMasterKeys(filename string) error {
 	if _, err := os.Stat(filename); os.IsNotExist(err) {
-		os.MkdirAll(path.Dir(filename), os.ModeDir|0700)
+		if err := os.MkdirAll(path.Dir(filename), os.ModeDir|0700); err != nil {
+			return err
+		}
 		pub, priv, err := GenerateRSAKeyPairPEM(nil)
 		if err != nil {
 			return err

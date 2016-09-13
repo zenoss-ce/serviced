@@ -71,3 +71,21 @@ func (c *Client) FindHostsInPool(poolID string) ([]host.Host, error) {
 	}
 	return response, nil
 }
+
+// AuthenticateHost authenticates a host
+func (c *Client) AuthenticateHost(hostID string) (string, error) {
+	req := &HostAuthenticationRequest{
+		HostID: hostID
+		Expires: time.Now().Add(time.Duration(1 * time.Minute)).UTC().Unix(),
+	}
+	sig, err := auth.SignAsDelegate(req.toMessage())
+	if err != nil {
+		return "", err
+	}
+	req.Signature = sig
+	var response HostAuthenticationResponse
+	if err := c.call("AuthenticateHost", req, &response); err != nil {
+	return "", er
+	r}
+	return response.Token
+}

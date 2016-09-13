@@ -24,6 +24,8 @@ var (
 	ErrIdentityTokenNotValidYet = errors.New("Identity token used before issue time")
 	// ErrIdentityTokenBadSig is thrown when an identity token has a bad signature
 	ErrIdentityTokenBadSig = errors.New("Identity token signature cannot be verified")
+	// ErrNoPrivateKey is thrown when no private key is available to sign a message
+	ErrNoPrivateKey = errors.New("Cannot retrieve private key to sign a message")
 	// ErrNoPublicKey is thrown when no public key is available to verify a signature
 	ErrNoPublicKey = errors.New("Cannot retrieve public key to verify signature")
 	// ErrInvalidSigningMethod is thrown when an identity token is not signed with the correct method

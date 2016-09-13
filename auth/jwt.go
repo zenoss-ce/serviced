@@ -15,7 +15,6 @@ package auth
 
 import (
 	"crypto"
-	"crypto/rsa"
 	"time"
 
 	jwt "github.com/dgrijalva/jwt-go"
@@ -40,17 +39,14 @@ type jwtIdentity struct {
 }
 
 // ParseJWTIdentity parses a JSON Web Token string, verifying that it was signed by the master.
-func ParseJWTIdentity(token string, masterPubKey crypto.PublicKey) (Identity, error) {
+func ParseJWTIdentity(token string) (Identity, error) {
 	claims := &jwtIdentity{}
 	parsed, err := jwt.ParseWithClaims(token, claims, func(token *jwt.Token) (interface{}, error) {
 		// Validate the algorithm matches the key
 		if _, ok := token.Method.(*jwt.SigningMethodRSAPSS); !ok {
 			return nil, ErrInvalidSigningMethod
 		}
-		if _, ok := masterPubKey.(*rsa.PublicKey); !ok {
-			return nil, ErrNotRSAPublicKey
-		}
-		return masterPubKey, nil
+		return GetMasterPublicKey()
 	})
 	if err != nil {
 		if verr, ok := err.(*jwt.ValidationError); ok {
@@ -74,7 +70,10 @@ func ParseJWTIdentity(token string, masterPubKey crypto.PublicKey) (Identity, er
 }
 
 // CreateJWTIdentity returns a signed string
-func CreateJWTIdentity(hostID, poolID string, admin, dfs bool, pubkey crypto.PublicKey, expiration time.Duration, masterPrivKey crypto.PrivateKey) (string, error) {
+func CreateJWTIdentity(hostID, poolID string, admin, dfs bool, pubkey crypto.PublicKey, expiration time.Duration) (string, error) {
+	if masterKeys.private == nil {
+		return "", ErrNotRSAPrivateKey
+	}
 	now := jwt.TimeFunc().UTC()
 	pem, err := PEMFromRSAPublicKey(pubkey, nil)
 	if err != nil {
@@ -90,7 +89,7 @@ func CreateJWTIdentity(hostID, poolID string, admin, dfs bool, pubkey crypto.Pub
 		PubKey:      string(pem),
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodPS256, claims)
-	return token.SignedString(masterPrivKey)
+	return token.SignedString(masterKeys.private)
 }
 
 func (id *jwtIdentity) Valid() error {
