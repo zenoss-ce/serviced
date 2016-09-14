@@ -25,6 +25,7 @@ import (
 	"github.com/control-center/serviced/commons/iptables"
 	"github.com/control-center/serviced/dfs/registry"
 	"github.com/control-center/serviced/domain/service"
+	"github.com/control-center/serviced/rpc/master"
 	"github.com/control-center/serviced/zzk"
 	zkservice "github.com/control-center/serviced/zzk/service"
 	dockerclient "github.com/fsouza/go-dockerclient"
@@ -115,17 +116,16 @@ func (a *HostAgent) StartContainer(cancel <-chan interface{}, serviceID string, 
 	})
 
 	// Establish a connection to the master
-	// TODO: use the new rpc calls instead
-	client, err := NewControlClient(a.master)
+	masterClient, err := master.NewClient(a.master)
 	if err != nil {
-		logger.WithField("client", a.master).WithError(err).Debug("Could not connect to the master")
+		logger.WithField("master", a.master).WithError(err).Debug("Could not connect to the master")
 		return nil, nil, err
 	}
-	defer client.Close()
+	defer masterClient.Close()
 
 	svc, err := a.getService(serviceID)
 	if err != nil {
-		logger.WithError(err).Debug("Could not get service")
+		logger.WithError(err).Debug("Unable to get service")
 		return nil, nil, err
 	}
 
@@ -136,16 +136,8 @@ func (a *HostAgent) StartContainer(cancel <-chan interface{}, serviceID string, 
 		return nil, nil, err
 	}
 	svc.ImageID = imageName
-
-	//// get the container configs
-	//conf, hostConf, err := a.setupContainer(client, svc, instanceID)
-	//if err != nil {
-	//	logger.WithError(err).Debug("Could not setup container")
-	//	return nil, nil, err
-	//}
-
 	// get the container configs
-	ctr, state, err := a.setupContainer(client, svc, instanceID, imageUUID)
+	ctr, state, err := a.setupContainer(masterClient, svc, instanceID, imageUUID)
 	if err != nil {
 		logger.WithError(err).Debug("Could not setup container")
 		return nil, nil, err
@@ -182,6 +174,7 @@ func (a *HostAgent) ResumeContainer(serviceID string, instanceID int) error {
 	svc, err := a.getService(serviceID)
 	if err != nil {
 		logger.WithError(err).Debug("Unable to retrieve service")
+		return nil
 	}
 
 	ctrName := fmt.Sprintf("%s-%d", svc.ID, instanceID)
@@ -370,26 +363,20 @@ func (a *HostAgent) getService(serviceID string) (*service.Service, error) {
 		"serviceid": serviceID,
 	})
 
-	// Get an RPC client
-	client, err := NewControlClient(a.master)
+	// Establish a connection to the master
+	masterClient, err := master.NewClient(a.master)
 	if err != nil {
-		logger.WithField("client", a.master).WithError(err).Debug("Could not connect to the master")
+		logger.WithField("master", a.master).WithError(err).Debug("Could not connect to the master")
 		return nil, err
 	}
-	defer client.Close()
+	defer masterClient.Close()
 
-	//create a service instance
-	svc, err := service.NewService()
+	svc, err := masterClient.GetService(serviceID)
 	if err != nil {
-		logger.WithError(err).Debug("Could not create a new service")
+		logger.WithError(err).Debug("Unable to get service")
 		return nil, err
 	}
 
-	// Get the service from the RPC client
-	if err := client.GetService(serviceID, svc); err != nil {
-		logger.WithError(err).Debug("Could not Get the service")
-		return nil, err
-	}
 	return svc, nil
 }
 
