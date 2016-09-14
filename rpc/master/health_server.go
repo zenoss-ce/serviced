@@ -58,7 +58,7 @@ func (s *Server) GetServicesHealth(unused struct{}, results *map[string]map[int]
 }
 
 // ReportHealthStatus sends an update to the health check status cache.
-func (s *Server) ReportHealthStatus(request HealthStatusRequest, unused *string) error  {
+func (s *Server) ReportHealthStatus(request HealthStatusRequest, unused *string) error {
 	s.f.ReportHealthStatus(request.Key, request.Value, request.Expires)
 	return nil
 }
