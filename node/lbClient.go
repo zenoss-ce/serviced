@@ -14,7 +14,6 @@
 package node
 
 import (
-	"github.com/control-center/serviced/domain/applicationendpoint"
 	"github.com/control-center/serviced/rpc/master"
 	"github.com/control-center/serviced/rpc/rpcutils"
 	"github.com/zenoss/glog"
@@ -57,12 +56,6 @@ func (a *LBClient) Ping(waitFor time.Duration, timestamp *time.Time) error {
 func (a *LBClient) SendLogMessage(serviceLogInfo ServiceLogInfo, _ *struct{}) error {
 	glog.V(4).Infof("ControlCenterAgent.SendLogMessage()")
 	return a.rpcClient.Call("ControlCenterAgent.SendLogMessage", serviceLogInfo, nil, 0)
-}
-
-// GetServiceEndpoints returns a list of endpoints for the given service endpoint request.
-func (a *LBClient) GetServiceEndpoints(serviceId string, endpoints *map[string][]applicationendpoint.ApplicationEndpoint) error {
-	glog.V(4).Infof("ControlCenterAgent.GetServiceEndpoints()")
-	return a.rpcClient.Call("ControlCenterAgent.GetServiceEndpoints", serviceId, endpoints, 0)
 }
 
 // GetEvaluatedService returns a service where an evaluation has been executed against all templated properties.
