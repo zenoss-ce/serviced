@@ -35,7 +35,7 @@ func Resolve(addr string) (*Addr, error) {
 	return &Addr(packedAddr[:AddrLen]), nil
 }
 
-// Network returns the network of the ip
+// Network returns the network
 func (a Addr) Network() string {
 	return "ip"
 }
@@ -76,40 +76,54 @@ func (h Header) WriteTo(w io.Writer) (n int64, err error) {
 }
 
 // Address returns the address to connect
-func (h Header) Address() *Addr {
-	return h.addr
+func (h Header) Address() string {
+	return h.addr.String()
 }
 
 // Verifier verifies the validity of a signature after loading it from the
 // reader.
 type Verifier interface {
-	Verify(r io.Reader, m []byte) error
+	Verify(r io.Reader, m []byte) (n int64, err error)
 	ReadToken(r io.Reader) (n int64, err error)
 }
 
 // ReadHeader extracts the mux header from the stream and authenticates.
-func ReadHeader(r io.Reader, v Verifier) (*Header, error) {
+func ReadHeader(r io.Reader, v Verifier) (h *Header, n int64, err error) {
 
-	// set up a buffer to tee
-	buffer := &bytes.Buffer{}
-	tee := io.TeeReader(r, buffer)
+	// if verifier is nil, just return the header
+	if v == nil {
+		h = &Header{}
+		n, err = io.Copy(h, r)
+		return
+	}
+
+	// set up a buffer to tee the signed message
+	msg := &bytes.Buffer{}
+	tee := io.TeeReader(r, msg)
 
 	// read the token
-	if _, err := v.ReadToken(tee); err != nil {
-		return nil, err
+	nsize, err := v.ReadToken(tee)
+	n += nsize
+	if err != nil {
+		return nil, n, err
 	}
 
 	// read the header
-	if _, err := io.Copy(h, tee); err != nil {
-		return nil, err
+	h = &Header{}
+	nsize, err = io.Copy(h, tee)
+	n += nsize
+	if err != nil {
+		return nil, n, err
 	}
 
 	// verify the signature (use the raw stream; not the tee)
-	if err := v.Verify(r, buffer.Bytes()); err != nil {
-		return nil, err
+	nsize, err = v.Verify(r, msg.Bytes())
+	n += nsize
+	if err != nil {
+		return nil, n, err
 	}
 
-	return h, nil
+	return
 }
 
 // Signer generates the signature and can write the signature to a writer
@@ -119,7 +133,12 @@ type Signer interface {
 }
 
 // WriteHeader dumps the mux header to the stream and signs.
-func WriteHeader(w io.Writer, s Signer, h *Header) (n int64, err error) {
+func WriteHeader(w io.Writer, h *Header, s Signer) (n int64, err error) {
+
+	// if signer is nil, just write the header
+	if s == nil {
+		return io.Copy(w, h)
+	}
 
 	// set up a buffer to multi
 	buffer := &bytes.Buffer{}
