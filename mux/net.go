@@ -52,26 +52,33 @@ func Listen(net, address, auth Verifier) (*Listener, err) {
 
 // Accept accepts incoming connections to proxy to local connections
 func (l *Listener) Accept() (conn net.Conn, err error) {
-	remote, err := l.listener.Accept()
-	if err != nil {
+	for {
+		// receive the request
+		remote, err := l.listener.Accept()
+		if err != nil {
+			return
+		}
+
+		// read the header
+		header, _, err := ReadHeader(remote, l.verifier)
+		if err != nil {
+			// TODO: write auth error to the connection
+			remote.Close()
+			continue
+		}
+
+		// dial the local connection
+		conn, err = net.Dial(l.listener.Addr().Network(), header.Address())
+		if err != nil {
+			// TODO: write dialer error to the connection
+			remote.Close()
+			continue
+		}
+
+		// proxy the request and return the local connection
+		proxy(remote, conn)
 		return
 	}
-
-	header, _, err := ReadHeader(remote, l.verifier)
-	if err != nil {
-		remote.Close()
-		return
-	}
-
-	net := l.listener.Addr().Network()
-	conn, err = net.Dial(net, header.Address())
-	if err != nil {
-		remote.Close()
-		return
-	}
-
-	proxy(remote, conn)
-	return
 }
 
 func proxy(remote, local net.Conn) {
