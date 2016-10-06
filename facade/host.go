@@ -312,6 +312,21 @@ func (f *Facade) GetActiveHostIDs(ctx datastore.Context) ([]string, error) {
 	return hostids, nil
 }
 
+func (f *Facade) GetAuthenticatedHostIDs(ctx datastore.Context) ([]string, error) {
+	hostids, err := f.GetActiveHostIDs(ctx)
+	if err != nil {
+		glog.Errorf("Could not get active host ids")
+		return nil, err
+	}
+	authenticated := []string{}
+	for _, id := range hostids {
+		if !auth.HostExpired(id) {
+			authenticated = append(authenticated, id)
+		}
+	}
+	return authenticated, nil
+}
+
 // FindHostsInPool returns a list of all hosts with poolID
 func (f *Facade) FindHostsInPool(ctx datastore.Context, poolID string) ([]host.Host, error) {
 	defer ctx.Metrics().Stop(ctx.Metrics().Start("FindHostsInPool"))

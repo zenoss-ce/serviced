@@ -62,6 +62,17 @@ func (s *Server) GetActiveHostIDs(empty struct{}, hostReply *[]string) error {
 	return nil
 }
 
+// GetAuthenticatedHostIDs returns all active hosts with
+// unexpired authentication tokens
+func (s *Server) GetAuthenticatedHostIDs(empty struct{}, hostReply *[]string) error {
+	hosts, err := s.f.GetActiveHostIDs(s.context())
+	if err != nil {
+		return err
+	}
+	*hostReply = hosts
+	return nil
+}
+
 // AddHost adds the host
 func (s *Server) AddHost(host host.Host, hostReply *[]byte) error {
 	privateKey, err := s.f.AddHost(s.context(), &host)
@@ -149,6 +160,7 @@ func (s *Server) AuthenticateHost(req HostAuthenticationRequest, resp *HostAuthe
 	if err != nil {
 		return err
 	}
+	auth.SetHostExpiration(host.ID, expires)
 	*resp = HostAuthenticationResponse{signed, expires}
 	return nil
 }

@@ -367,7 +367,17 @@ func restGetActiveHostIDs(w *rest.ResponseWriter, r *rest.Request, ctx *requestC
 	}
 
 	w.WriteJson(&hostids)
+}
 
+func restGetAuthenticatedHostIDs(w *rest.ResponseWriter, r *rest.Request, ctx *requestContext) {
+	facade := ctx.getFacade()
+	dataCtx := ctx.getDatastoreContext()
+	hostids, err := facade.GetAuthenticatedHostIDs(dataCtx)
+	if err != nil {
+		restServerError(w, err)
+		return
+	}
+	w.WriteJson(&hostids)
 }
 
 //restGetHost retrieves a host. Response is Host

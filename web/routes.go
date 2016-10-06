@@ -33,6 +33,7 @@ func (sc *ServiceConfig) getRoutes() []rest.Route {
 		// Hosts
 		rest.Route{"GET", "/hosts", gz(sc.checkAuth(restGetHosts))},
 		rest.Route{"GET", "/hosts/running", gz(sc.checkAuth(restGetActiveHostIDs))},
+		rest.Route{"GET", "/hosts/authenticated", gz(sc.checkAuth(restGetAuthenticatedHostIDs))},
 		rest.Route{"GET", "/hosts/defaultHostAlias", gz(sc.checkAuth(restGetDefaultHostAlias))},
 		rest.Route{"GET", "/hosts/:hostId", gz(sc.checkAuth(restGetHost))},
 		rest.Route{"POST", "/hosts/add", gz(sc.checkAuth(restAddHost))},
