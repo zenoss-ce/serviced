@@ -30,6 +30,14 @@ import (
 	"github.com/zenoss/go-json-rest"
 )
 
+// HostStateUI contains current host state
+// that is useful to the UI
+type HostStateUI struct {
+	ID            string
+	Active        bool
+	Authenticated bool
+}
+
 //restGetHosts gets all hosts. Response is map[host-id]host.Host
 func restGetHosts(w *rest.ResponseWriter, r *rest.Request, ctx *requestContext) {
 	facade := ctx.getFacade()
@@ -355,6 +363,42 @@ func restGetAggregateServices(w *rest.ResponseWriter, r *rest.Request, ctx *requ
 
 	glog.V(4).Infof("restGetServiceInstances: id %s, instances %#v", serviceIDs, aggServices)
 	w.WriteJson(&aggServices)
+}
+
+func restGetHostStatuses(w *rest.ResponseWriter, r *rest.Request, ctx *requestContext) {
+	facade := ctx.getFacade()
+	dataCtx := ctx.getDatastoreContext()
+
+	// TODO - im sure theres a more efficient way than
+	// making these 3 hilarious calls
+	hosts, err := facade.GetHosts(dataCtx)
+	if err != nil {
+		restServerError(w, err)
+		return
+	}
+
+	active, err := facade.GetActiveHostIDs(dataCtx)
+	if err != nil {
+		restServerError(w, err)
+		return
+	}
+
+	authed, err := facade.GetAuthenticatedHostIDs(dataCtx)
+	if err != nil {
+		restServerError(w, err)
+		return
+	}
+
+	response := make(map[string]HostStateUI)
+	for _, host := range hosts {
+		response[host.ID] = HostStateUI{
+			ID:            host.ID,
+			Active:        Contains(active, host.ID),
+			Authenticated: Contains(authed, host.ID),
+		}
+	}
+
+	w.WriteJson(&response)
 }
 
 func restGetActiveHostIDs(w *rest.ResponseWriter, r *rest.Request, ctx *requestContext) {

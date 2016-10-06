@@ -197,3 +197,14 @@ func (ln TCPKeepAliveListener) Accept() (c net.Conn, err error) {
 		return conn, nil
 	}
 }
+
+// Contains returns a bool indicating if a string
+// is in a slice of strings
+func Contains(slice []string, str string) bool {
+	for _, s := range slice {
+		if s == str {
+			return true
+		}
+	}
+	return false
+}
