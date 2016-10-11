@@ -1283,7 +1283,6 @@ health-icon {
     content: "\e082";
 }
 
-
 h3 health-icon {
     top: 2px;
     width: 24px !important;
@@ -1956,4 +1955,52 @@ body.no-animation *:after {
 .permission-tag:last-of-type::after {
     content: "";
     padding-right: 0;
+}
+
+.host-stat-cell .healthIcon {
+    z-index: 10;
+    position: relative;
+}
+
+.host-stat-cell .host-stat-icon {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: flex-start;
+    padding-left: 11px;
+    position: absolute;
+    width: 50px;
+    height: 50px;
+    border: solid white 2px;
+    overflow: hidden;
+    background-color: white;
+    border-radius: 50%;
+    cursor: default;
+    color: white;
+    z-index: 9;
+    opacity: 0;
+
+    margin: auto;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+
+    transition: opacity 0.1s, width 0.1s, height 0.1s;
+}
+.host-stat-cell:hover .host-stat-icon {
+    width: 80px;
+    height: 80px;
+    opacity: 1;
+    z-index: 100;
+}
+
+.host-stat-cell .host-stat-icon.passed {
+    background-color: #0084DB;
+}
+.host-stat-cell .host-stat-icon.failed {
+    background-color: #9C1200;
+}
+.host-stat-cell .host-stat-icon.unknown {
+    background-color: #94C0DB;
 }

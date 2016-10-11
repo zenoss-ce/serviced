@@ -158,6 +158,26 @@
             });
         };
 
+        // TODO - centralize this into host.js once
+        // v2 stuff is in
+        $scope.getHostStatusClass = function(host){
+            let active = host.model.Active,
+                authed = host.model.Authenticated;
+
+            // connected and authenticated
+            if(active && authed){
+                return "passed";
+
+            // connected but not yet authenticated
+            } else if(active && !authed){
+                // TODO - something more clearly related to auth
+                return "unknown";
+
+            // not connected
+            } else {
+                return "failed";
+            }
+        };
 
         init();
 

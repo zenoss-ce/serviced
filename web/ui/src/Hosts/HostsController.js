@@ -119,6 +119,72 @@
             resourcesFactory.routeToPool(poolID);
         };
 
+
+        // TODO - centralize this into host.js once
+        // v2 stuff is in
+        $scope.getHostStatusClass = function(host){
+            let {active, authed} = $scope.getHostStatus(host);
+
+            // stuff hasnt loaded, so unknown
+            if(active === null && authed === null){
+                return "unknown";
+            }
+
+            // connected and authenticated
+            if(active && authed){
+                return "passed";
+
+            // connected but not yet authenticated
+            } else if(active && !authed){
+                // TODO - something more clearly related to auth
+                return "unknown";
+
+            // not connected
+            } else {
+                return "failed";
+            }
+        };
+        $scope.getHostStatus = function(host){
+            if(!host || !$scope.hostStatuses){
+                return {active: null, authed: null};
+            }
+
+            let status = $scope.hostStatuses[host.id],
+                active = status.Active,
+                authed = status.Authenticated;
+
+            return {active, authed};
+        };
+        $scope.getHostActiveStatusClass = function(host){
+            let {active, authed} = $scope.getHostStatus(host),
+                status;
+
+            if(active === true){
+                status = "glyphicon-ok";
+            } else if(active === false){
+                status = "glyphicon-exclamation-sign";
+            } else {
+                status = "glyphicon-question-sign";
+            }
+
+            return status;
+        };
+        $scope.getHostAuthStatusClass = function(host){
+            let {active, authed} = $scope.getHostStatus(host),
+                status;
+
+            if(authed === true){
+                status = "glyphicon-ok";
+            } else if(authed === false){
+                status = "glyphicon-exclamation-sign";
+            } else {
+                status = "glyphicon-question-sign";
+            }
+
+            return status;
+        };
+
+
         function update(){
             hostsFactory.update()
                 .then(() => {
@@ -159,6 +225,19 @@
 
             // update hosts
             update();
+
+            // TODO - remove this and consolidate with v2
+            // status polling
+            $scope.hostStatusInterval = $interval(() => {
+                resourcesFactory.getHostStatuses()
+                    .then(data => {
+                        let statuses = {};
+                        data.forEach(s => statuses[s.HostID] = s);
+                        $scope.hostStatuses = statuses;
+                    }, err => {
+                        console.log("err", err); 
+                    });
+            }, 3000);
 
             servicesFactory.activate();
             hostsFactory.activate();
