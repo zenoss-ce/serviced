@@ -7,38 +7,27 @@
     angular.module('hostIcon', [])
     .directive('hostIcon', [function() {
         var template = `
-              <div class="host-stat-icon" ng-class="vm.getHostStatusClass()">
-                  <div style="white-space: nowrap;"><i class="glyphicon" ng-class="vm.getHostActiveStatusClass()"></i> Active</div>
-                  <div style="white-space: nowrap;"><i class="glyphicon" ng-class="vm.getHostAuthStatusClass()"></i> Auth</div>
-              </div>`;
-      
+            <div ng-class="vm.getHostStatusClass()" style="position: relative; height: 22px;">
+                <i class="healthIcon glyphicon"></i>
+            </div>`;
+
+        let popoverContentTemplate = m => {
+            return `
+                <div class='healthTooltipDetailRow ${m.getHostActiveStatusClass()}'>
+                    <i class='healthIcon glyphicon'></i>
+                    <div class='healthTooltipDetailName'>Active</div>
+                </div>
+                <div class='healthTooltipDetailRow ${m.getHostAuthStatusClass()}'>
+                    <i class='healthIcon glyphicon'></i>
+                    <div class='healthTooltipDetailName'>Authenticated</div>
+                </div>
+            `;
+        };
+          
         class Controller {
             constructor(){
-                // DO THINGS
+                // hi.
             }
-            getHostStatusClass(){
-                let {active, authed} = this._getHostStatus();
-
-                // stuff hasnt loaded, so unknown
-                if(active === null && authed === null){
-                    return "unknown";
-                }
-
-                // connected and authenticated
-                if(active && authed){
-                    return "passed";
-
-                // connected but not yet authenticated
-                } else if(active && !authed){
-                    // TODO - something more clearly related to auth
-                    return "unknown";
-
-                // not connected
-                } else {
-                    return "failed";
-                }
-            }
-
             _getHostStatus(){
                 if(!this.host){
                     return {active: null, authed: null};
@@ -56,16 +45,39 @@
                 return {active, authed};
             }
 
+            getHostStatusClass(){
+                let {active, authed} = this._getHostStatus();
+
+                // stuff hasnt loaded, so unknown
+                if(active === null && authed === null){
+                    return "unknown";
+                }
+
+                // connected and authenticated
+                if(active && authed){
+                    return "passed";
+
+                // connected but not yet authenticated
+                } else if(active && !authed){
+                    // TODO - something more clearly related to auth
+                    return "failed";
+
+                // not connected
+                } else {
+                    return "not_running";
+                }
+            }
+
             getHostActiveStatusClass(){
-                let {active, authed} = this._getHostStatus(),
+                let {active} = this._getHostStatus(),
                     status;
 
                 if(active === true){
-                    status = "glyphicon-ok";
+                    status = "passed";
                 } else if(active === false){
-                    status = "glyphicon-exclamation-sign";
+                    status = "not_running";
                 } else {
-                    status = "glyphicon-question-sign";
+                    status = "unknown";
                 }
 
                 return status;
@@ -76,17 +88,32 @@
                     status;
 
                 if(authed === true){
-                    status = "glyphicon-ok";
-                } else if(authed === false){
-                    status = "glyphicon-exclamation-sign";
+                    status = "passed";
+                } else if(active === true && authed === false){
+                    status = "failed";
+                } else if(active === false && authed === false){
+                    status = "not_running";
                 } else {
-                    status = "glyphicon-question-sign";
+                    status = "unknown";
                 }
 
                 return status;
             }
 
+            updatePopover(){
+                let p = this.popover;
+                p.options.content = popoverContentTemplate(this);
+                p.setContent();
 
+                // if the popover is currently visible, update
+                // it immediately, but turn off animation to
+                // prevent it fading in
+                if(p.$tip.is(":visible")){
+                    p.options.animation = false;
+                    p.show();
+                    p.options.animation = true;
+                }
+            }
         }
       
         return {
@@ -100,9 +127,47 @@
             bindToController: true,
             template: template,
             link: function(scope, element, attrs) {
-                element.addClass("host-stat-icon");
-            }
+                let $icon = $(element).find(".healthIcon");
+                $icon.popover({
+                    trigger: "hover",
+                    placement: "right",
+                    delay: 0,
+                    html: true
+                });
+                // NOTE: directly accessing the bootstrap popover
+                // data object here.
+                scope.vm.popover = $icon.data("bs.popover");
+                scope.vm.updatePopover();
 
+                // use a bitfield to describe host state as a 
+                // single value to determine if we need to
+                // update the view
+                var ACTIVE = 1 << 1,
+                    AUTHED = 1 << 2;
+
+                scope.$watch(function(){
+                    let {active, authed} = scope.vm._getHostStatus(),
+                        val = 0;
+
+                    // no results have come back yet
+                    if(active === null && authed === null){
+                        return -1;
+                    }
+
+                    // results, so lets smoosh em
+                    // into a single value
+                    if(active){
+                        val = val ^ ACTIVE;
+                    }
+                    if(authed){
+                        val = val ^ AUTHED;
+                    }
+
+                    return val;
+                }, function(newVal, oldVal){
+                    scope.vm.updatePopover();
+                });
+            }
         };
   }]);
 

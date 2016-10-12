@@ -916,6 +916,7 @@ input.startup {
 .popover .healthTooltipDetailRow {
     position: relative;
     font-size: 12px;
+    white-space: nowrap;
 }
 .popover .healthTooltipDetailRow .healthTooltipDetailName {
     display: inline-block;
@@ -1266,19 +1267,19 @@ health-icon {
 
 /* NOTE: hardcoding glyphicon glyphs here to make CSS simpler.
  * Changes to glyphicons or angular could cause this to break */
-.passed .healthIcon:before{
+.passed>.healthIcon:before{
     color: #0084DB;
     content: "\e084";
 }
-.failed .healthIcon:before{
+.failed>.healthIcon:before{
     color: #9C1200;
     content: "\e101";
 }
-.unknown .healthIcon:before{
+.unknown>.healthIcon:before{
     color: #94C0DB;
     content: "\e085";
 }
-.not_running .healthIcon:before{
+.not_running>.healthIcon:before{
     color: #AAA;
     content: "\e082";
 }
@@ -1955,52 +1956,4 @@ body.no-animation *:after {
 .permission-tag:last-of-type::after {
     content: "";
     padding-right: 0;
-}
-
-.host-stat-cell .healthIcon {
-    z-index: 10;
-    position: relative;
-}
-
-.host-stat-cell .host-stat-icon {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: flex-start;
-    padding-left: 11px;
-    position: absolute;
-    width: 50px;
-    height: 50px;
-    border: solid white 2px;
-    overflow: hidden;
-    background-color: white;
-    border-radius: 50%;
-    cursor: default;
-    color: white;
-    z-index: 9;
-    opacity: 0;
-
-    margin: auto;
-    top: 0;
-    bottom: 0;
-    left: 0;
-    right: 0;
-
-    transition: opacity 0.1s, width 0.1s, height 0.1s;
-}
-.host-stat-cell:hover .host-stat-icon {
-    width: 80px;
-    height: 80px;
-    opacity: 1;
-    z-index: 100;
-}
-
-.host-stat-cell .host-stat-icon.passed {
-    background-color: #0084DB;
-}
-.host-stat-cell .host-stat-icon.failed {
-    background-color: #9C1200;
-}
-.host-stat-cell .host-stat-icon.unknown {
-    background-color: #94C0DB;
 }

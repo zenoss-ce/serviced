@@ -218,6 +218,7 @@
             hostsFactory.deactivate();
             servicesFactory.deactivate();
             poolsFactory.deactivate();
+            $interval.cancel($scope.hostStatusInterval);
         });
     }]);
 })();
