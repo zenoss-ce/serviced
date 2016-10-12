@@ -119,16 +119,23 @@
             resourcesFactory.routeToPool(poolID);
         };
 
-
-        // TODO - centralize this into host.js once
-        // v2 stuff is in
+        // TODO - move this to Host.js when v2 stuff drops
+        // provide a way for hostIcon to get statuses
+        $scope.getHostStatus = function(id){
+            if($scope.hostStatuses){
+                return $scope.hostStatuses[id];
+            }
+        };
         $scope.getHostStatusClass = function(host){
-            let {active, authed} = $scope.getHostStatus(host);
+            let status = $scope.getHostStatus(host.id);
 
             // stuff hasnt loaded, so unknown
-            if(active === null && authed === null){
+            if(!status){
                 return "unknown";
             }
+
+            let active = status.Active,
+                authed = status.Authenticated;
 
             // connected and authenticated
             if(active && authed){
@@ -143,45 +150,6 @@
             } else {
                 return "failed";
             }
-        };
-        $scope.getHostStatus = function(host){
-            if(!host || !$scope.hostStatuses){
-                return {active: null, authed: null};
-            }
-
-            let status = $scope.hostStatuses[host.id],
-                active = status.Active,
-                authed = status.Authenticated;
-
-            return {active, authed};
-        };
-        $scope.getHostActiveStatusClass = function(host){
-            let {active, authed} = $scope.getHostStatus(host),
-                status;
-
-            if(active === true){
-                status = "glyphicon-ok";
-            } else if(active === false){
-                status = "glyphicon-exclamation-sign";
-            } else {
-                status = "glyphicon-question-sign";
-            }
-
-            return status;
-        };
-        $scope.getHostAuthStatusClass = function(host){
-            let {active, authed} = $scope.getHostStatus(host),
-                status;
-
-            if(authed === true){
-                status = "glyphicon-ok";
-            } else if(authed === false){
-                status = "glyphicon-exclamation-sign";
-            } else {
-                status = "glyphicon-question-sign";
-            }
-
-            return status;
         };
 
 
