@@ -74,7 +74,7 @@ func (f *Facade) GetServiceInstances(ctx datastore.Context, since time.Time, ser
 	logger = logger.WithField("instances", len(states))
 	logger.Debug("Found running instances for service")
 
-	metricsreq := make([]metrics.ServiceInstance, len(states))
+	metricsreq := []metrics.ServiceInstance{}
 	insts := make([]service.Instance, len(states))
 	for i, state := range states {
 		hst, ok := hostMap[state.HostID]
@@ -95,7 +95,11 @@ func (f *Facade) GetServiceInstances(ctx datastore.Context, since time.Time, ser
 		if err != nil {
 			return nil, err
 		}
-		metricsreq[i] = metrics.ServiceInstance{ServiceID: inst.ServiceID, InstanceID: inst.InstanceID}
+
+		// only get look up metrics from containers that are running
+		if inst.Started.After(inst.Terminated) {
+			metricsreq = append(metricsreq, metrics.ServiceInstance{ServiceID: inst.ServiceID, InstanceID: inst.InstanceID})
+		}
 		insts[i] = *inst
 		instanceMap[fmt.Sprintf("%s-%d", inst.ServiceID, inst.InstanceID)] = &insts[i].MemoryUsage
 	}
@@ -157,7 +161,7 @@ func (f *Facade) GetHostInstances(ctx datastore.Context, since time.Time, hostID
 	logger = logger.WithField("instances", len(states))
 	logger.Debug("Found running instances for services")
 
-	metricsreq := make([]metrics.ServiceInstance, len(states))
+	metricsreq := []metrics.ServiceInstance{}
 	insts := make([]service.Instance, len(states))
 	for i, state := range states {
 
@@ -190,7 +194,11 @@ func (f *Facade) GetHostInstances(ctx datastore.Context, since time.Time, hostID
 		if err != nil {
 			return nil, err
 		}
-		metricsreq[i] = metrics.ServiceInstance{ServiceID: inst.ServiceID, InstanceID: inst.InstanceID}
+
+		// only look up metrics for instances that are running
+		if inst.Started.After(inst.Terminated) {
+			metricsreq = append(metricsreq, metrics.ServiceInstance{ServiceID: inst.ServiceID, InstanceID: inst.InstanceID})
+		}
 		insts[i] = *inst
 		instanceMap[fmt.Sprintf("%s-%d", inst.ServiceID, inst.InstanceID)] = &insts[i].MemoryUsage
 	}

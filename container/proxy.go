@@ -16,21 +16,16 @@ package container
 import (
 	"crypto/tls"
 	"fmt"
-	"io"
-	"math/rand"
 	"net"
-	"strconv"
 	"strings"
+	"sync"
 	"time"
 
-	"github.com/control-center/serviced/auth"
-	"github.com/control-center/serviced/utils"
-	"github.com/zenoss/glog"
+	"github.com/Sirupsen/logrus"
+	"github.com/control-center/serviced/mux"
+	"github.com/control-center/serviced/web"
+	"github.com/control-center/serviced/zzk/registry"
 )
-
-func init() {
-	rand.Seed(time.Now().UnixNano())
-}
 
 /*
 The 'prxy' service implemented here provides both a prxy for outbound
@@ -71,246 +66,209 @@ The netcat (nc) command is particularly useful for this:
     nc 127.0.0.1 4321
 */
 
-type addressTuple struct {
-	host          string // IP of the host on which the container is running
-	containerAddr string // Container IP:port of the remote service
+// proxyKey is the key mapping for finding the container proxy within
+// the cache.
+type proxyKey struct {
+	Application string
+	PortNumber  uint16
 }
 
-type proxy struct {
-	name             string              // Name of the remote service
-	tenantEndpointID string              // Tenant endpoint ID
-	addresses        []addressTuple      // Public/container IP:Port of the remote service
-	tcpMuxPort       uint16              // the port to use for TCP Muxing, 0 is disabled
-	useTLS           bool                // use encryption over mux port
-	closing          chan chan error     // internal shutdown signal
-	newAddresses     chan []addressTuple // a stream of updates to the addresses
-	listener         net.Listener        // handle on the listening socket
-	allowDirectConn  bool                // allow container to container connections
+// ContainerProxyCache stores a mapping of container proxies
+type proxyCache struct {
+	mu            *sync.Mutex
+	cache         map[ContainerProxyKey]*ContainerProxy
+	cancel        <-chan struct{}
+	useTLS        bool
+	useDirectConn bool
 }
 
-// Newproxy create a new proxy object. It starts listening on the prxy port asynchronously.
-func newProxy(name, tenantEndpointID string, tcpMuxPort uint16, useTLS bool, listener net.Listener, allowDirectConn bool) (p *proxy, err error) {
-	if len(name) == 0 {
-		return nil, fmt.Errorf("prxy: name can not be empty")
+// NewContainerProxyCache instantiates a new container proxy cache.
+func newProxyCache(cancel <-chan struct{}, useTLS, useDirectConn bool) *ContainerProxyCache {
+	return &ContainerProxyCache{
+		mu:            &sync.Mutex{},
+		cache:         make(map[ContainerProxyKey]*ContainerProxy),
+		cancel:        cancel,
+		useTLS:        useTLS,
+		useDirectConn: useDirectConn,
 	}
-	p = &proxy{
-		name:             name,
-		tenantEndpointID: tenantEndpointID,
-		addresses:        make([]addressTuple, 0),
-		tcpMuxPort:       tcpMuxPort,
-		useTLS:           useTLS,
-		listener:         listener,
-		allowDirectConn:  allowDirectConn,
+}
+
+// Set updates exports for a particular import, creating a new proxy if it does
+// not already exist in the cache.
+func (c *proxyCache) Set(application string, portNumber uint16, exports ...registry.ExportDetails) (bool, error) {
+	logger := plog.WithFields(logrus.Fields{
+		"application": application,
+		"portnumber":  portNumber,
+	})
+
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	key := ContainerProxyKey{Application: application, PortNumber: portNumber}
+	proxy, ok := c.cache[key]
+	if !ok {
+		proxy, err := NewContainerProxy(c.cancel, application, portNumber, c.useTLS, c.useDirectConn, exports)
+		if err != nil {
+			logger.WithError(err).Debug("Could not set up new proxy")
+			return false, err
+		}
+		logger.Debug("Adding a new proxy to the cache")
+		c.cache[key] = proxy
+		return true, nil
 	}
-	p.newAddresses = make(chan []addressTuple, 2)
-	go p.listenAndproxy()
+
+	proxy.SetExports(exports)
+	return false, nil
+}
+
+// Proxy proxies a collection of exports to a specific port binding.
+type Proxy struct {
+	exports       web.Exports
+	useTLS        bool
+	useDirectConn bool
+}
+
+// NewProxy opens a port to proxy a group of incoming connections.
+func NewProxy(cancel <-chan struct{}, application string, portNumber uint16, useTLS, useDirectConn bool, exports []registry.ExportDetails) (*ContainerProxy, error) {
+	logger := plog.WithFields(logrus.Fields{
+		"application": application,
+		"portnumber":  portNumber,
+	})
+
+	logger.Debug("Opening port for proxy")
+	listener, err := net.Listen("tcp4", fmt.Sprintf(":%d", portNumber))
+	if err != nil {
+		logger.WithError(err).Debug("Could not open port")
+		return nil, err
+	}
+
+	p := &ContainerProxy{
+		exports:       web.NewRoundRobinExports(exports),
+		useTLS:        useTLS,
+		useDirectConn: useDirectConn,
+	}
+
+	go p.serve(cancel, application, portNumber, listener)
 	return p, nil
 }
 
-// Name() returns the application name associated with the prxy
-func (p *proxy) Name() string {
-	return p.name
+// SetExports updates the list of exports to proxy.
+func (p *Proxy) SetExports(exports []registry.ExportDetails) {
+	p.exports.Set(exports)
 }
 
-// String() pretty prints the proxy struct.
-func (p *proxy) String() string {
-	return fmt.Sprintf("proxy[%s; %s]=>%v", p.name, p.listener, p.addresses)
-}
+// serve manages requests sent on a given port
+func (p *Proxy) serve(cancel <-chan struct{}, application string, portNumber uint16, listener net.Listener) {
+	logger := plog.WithFields(logrus.Fields{
+		"application": application,
+		"portnumber":  portNumber,
+	})
 
-// TCPMuxPort() returns the tcp port use for muxing, 0 if not used.
-func (p *proxy) TCPMuxPort() uint16 {
-	return p.tcpMuxPort
-}
-
-// UseTLS() returns true if TLS is used during tcp muxing.
-func (p *proxy) UseTLS() bool {
-	return p.useTLS
-}
-
-// Set a new Destination Address set for the prxy
-func (p *proxy) SetNewAddresses(addresses []addressTuple) {
-	// Randomize the addresses so not all instances get them in the same order
-	dest := make([]addressTuple, len(addresses))
-	perm := rand.Perm(len(addresses))
-	for i, v := range perm {
-		dest[v] = addresses[i]
-	}
-	p.newAddresses <- dest
-}
-
-// Close() terminates the prxy; it can not be restarted.
-func (p *proxy) Close() error {
-	p.listener.Close()
-	errc := make(chan error)
-	p.closing <- errc
-	return <-errc
-}
-
-// listenAndproxy listens, locally, on the prxy's specified Port. For each
-// incoming connection a goroutine running the prxy method is created.
-func (p *proxy) listenAndproxy() {
-
-	connections := make(chan net.Conn)
-	go func(lsocket net.Listener, conns chan net.Conn) {
+	// Pass along incoming connections
+	ch := make(chan net.Conn)
+	go func() {
 		for {
-			conn, err := lsocket.Accept()
+			conn, err := listener.Accept()
 			if err != nil {
-				glog.Fatal("Error (net.Accept): ", err)
-			}
-			conns <- conn
-		}
-	}(p.listener, connections)
-
-	i := 0
-	for {
-		select {
-		case conn := <-connections:
-			if len(p.addresses) == 0 {
-				glog.Warningf("No remote services available for prxying %v", p)
-				conn.Close()
-				continue
-			}
-			i++
-			// round robin connections to list of addresses
-			glog.V(1).Infof("choosing address from %v", p.addresses)
-			go p.prxy(conn, p.addresses[i%len(p.addresses)])
-		case p.addresses = <-p.newAddresses:
-		case errc := <-p.closing:
-			p.listener.Close()
-			errc <- nil
-			return
-		}
-	}
-}
-
-func getPort(addr string) (int, error) {
-	parts := strings.Split(addr, ":")
-	if len(parts) == 0 {
-		return 0, fmt.Errorf("could not determint port from %v", addr)
-	}
-	port := parts[len(parts)-1]
-	return strconv.Atoi(port)
-}
-
-// prxy takes an established local connection, Dials the remote address specified
-// by the proxy structure and then copies data to and from the resulting pair
-// of endpoints.
-func (p *proxy) prxy(local net.Conn, address addressTuple) {
-
-	var (
-		remote net.Conn
-		err    error
-	)
-	glog.V(2).Infof("Setting up proxy for %#v", address)
-	isLocalContainer := false
-	localAddr := address.containerAddr
-	if p.allowDirectConn {
-		//check if the host for the container is running on the same host
-		isLocalContainer = isLocalAddress(address.host)
-		glog.V(4).Infof("Checking is local for %s %s in %#v", address.host, isLocalContainer, hostIPs)
-		// don't proxy localhost addresses, we'll end up in a loop
-		if isLocalContainer {
-			switch {
-			case strings.HasPrefix(address.host, "127"):
-				isLocalContainer = false
-			case address.host == "localhost":
-				isLocalContainer = false
-			case strings.HasPrefix(address.containerAddr, "127") || strings.HasPrefix(address.containerAddr, "localhost:"):
-				//if the host is local and the container has a local style addr
-				//then container is exposing port directly on host; go to host and use container port
-				if containerPort, err := getPort(address.containerAddr); err != nil {
-					glog.Warningf("could not get port %v", err)
-					isLocalContainer = false
-				} else {
-					localAddr = fmt.Sprintf("%s:%d", address.host, containerPort)
+				// Check if the reason the listener failed was because we are
+				// shutting down.  If so, then just exit nicely.
+				select {
+				case <-cancel:
+					logger.WithError(err).Debug("Could not accept incoming connection")
+					return
+				case <-time.After(time.Second):
+					logger.WithError(err).Fatal("Could not accept incoming connection")
 				}
 			}
+			select {
+			case ch <- conn:
+			case <-cancel:
+				return
+			}
 		}
-	}
-	if p.tcpMuxPort == 0 {
-		// TODO: Do this properly
-		glog.Errorf("Mux port is unspecified. Using default of 22250.")
-		p.tcpMuxPort = 22250
-	}
+	}()
 
-	muxAddr := fmt.Sprintf("%s:%d", address.host, p.tcpMuxPort)
-
-	// Build the authentication header before dialing the connection, so the
-	// connection isn't sitting open waiting for an authentication token to be
-	// loaded.
-	var (
-		muxAuthHeader []byte
-		tokenTimeout  = 30 * time.Second
-	)
-
-	if !isLocalContainer {
-		muxHeader, err := utils.PackTCPAddressString(address.containerAddr)
-		if err != nil {
-			glog.Errorf("Container address is invalid. Can't create proxy: %s", address.containerAddr)
-			return
-		}
-		var token string
+	// Proxy local connections to remote endpoints
+	for {
 		select {
-		case token = <-auth.AuthToken(nil):
-		case <-time.After(tokenTimeout):
-			glog.Error("Unable to retrieve authentication token with 30 seconds")
-			return
-		}
-		muxAuthHeader, err = auth.BuildAuthMuxHeader(muxHeader, token)
-		if err != nil {
-			glog.Errorf("Error building authenticated mux header. %s", err)
-			return
-		}
-	}
-
-	// Dial the target connection, which will be either a local container
-	// address or a mux port on a remote host.
-	switch {
-	case isLocalContainer:
-		glog.V(2).Infof("dialing local addr=> %s", localAddr)
-		remote, err = net.Dial("tcp4", localAddr)
-		if err != nil {
-			glog.Errorf("Error Local (net.Dial): %s", err)
-			return
-		}
-	case p.useTLS:
-		glog.V(2).Infof("dialing remote tls => %s", muxAddr)
-		config := tls.Config{InsecureSkipVerify: true}
-		tlsConn, err := tls.Dial("tcp4", muxAddr, &config)
-		if err != nil {
-			glog.Errorf("Error TLS (net.Dial): %s", err)
-			return
-		}
-		remote = tlsConn // cast it to the net.Conn interface
-		cipher := tlsConn.ConnectionState().CipherSuite
-		glog.V(2).Infof("Proxy connected to mux with TLS cipher=%s (%d)", utils.GetCipherName(cipher), cipher)
-	default:
-		glog.V(2).Infof("dialing remote => %s", muxAddr)
-		remote, err = net.Dial("tcp4", muxAddr)
-		if err != nil {
-			glog.Errorf("Error Remote (net.Dial): %s", err)
+		case local := <-ch:
+			if export := p.exports.Next(); export != nil {
+				remote, err := p.getRemoteConnection(cancel, export)
+				if err != nil {
+					logger.WithError(err).Error("Could not establish remote connection")
+					local.Close()
+					continue
+				}
+				proxy(remote, local)
+				select {
+				case <-cancel:
+					return
+				default:
+				}
+			} else {
+				logger.Warn("No remote services available for proxying")
+				local.Close()
+			}
+		case <-cancel:
 			return
 		}
 	}
+}
 
-	// Write the authentication header, which will be empty if this is a local
-	// container.
-	remote.Write(muxAuthHeader)
+// getRemoteConnection opens an outbound connection on the given export.
+func (p *Proxy) getRemoteConnection(cancel <-chan struct{}, export *registry.ExportDetails) (net.Conn, error) {
+	logger := plog.WithFields(logrus.Fields{
+		"application": export.Application,
+		"hostip":      export.HostIP,
+		"muxport":     export.MuxPort,
+		"privateip":   export.PrivateIP,
+		"privateport": export.PortNumber,
+	})
 
-	glog.V(2).Infof("Using hostAgent:%v to prxy %v<->%v<->%v<->%v",
-		remote.RemoteAddr(), local.LocalAddr(), local.RemoteAddr(), remote.LocalAddr(), address)
-	go func(address string) {
-		defer local.Close()
-		defer remote.Close()
-		io.Copy(local, remote)
-		glog.V(2).Infof("Closing hostAgent:%v to prxy %v<->%v<->%v<->%v",
-			remote.RemoteAddr(), local.LocalAddr(), local.RemoteAddr(), remote.LocalAddr(), address)
-	}(address.containerAddr)
-	go func(address string) {
-		defer local.Close()
-		defer remote.Close()
-		io.Copy(remote, local)
-		glog.V(2).Infof("closing hostAgent:%v to prxy %v<->%v<->%v<->%v",
-			remote.RemoteAddr(), local.LocalAddr(), local.RemoteAddr(), remote.LocalAddr(), address)
-	}(address.containerAddr)
+	// establish the local address
+	localAddress := fmt.Sprintf("%s:%d", export.PrivateIP, export.PortNumber)
+
+	if p.useDirectConn {
+		// check if the host for the container is running on the same host
+		if isLocalAddress(export.HostIP) {
+
+			// don't proxy localhost address, we'll end up in a loop
+			if !strings.HasPrefix(export.HostIP, "127") && export.HostIP != "localhost" {
+
+				// return the connection if the target is local
+				logger.WithField("address", localAddress).Debug("Dialing a local connection")
+				return net.Dial("tcp4", localAddress)
+			}
+		}
+	}
+
+	// establish the remote address
+	if export.MuxPort == 0 {
+		logger.Warn("Mux port is unspecified, using default of 22250")
+		export.MuxPort = 22250
+	}
+	remoteAddress := fmt.Sprintf("%s:%d", export.HostIP, export.MuxPort)
+
+	logger = logger.WithFields(logrus.Fields{
+		"address":    remoteAddress,
+		"tlsenabled": p.useTLS,
+	})
+
+	// build the header
+	header, err = mux.NewHeader(localAddress)
+	if err != nil {
+		logger.WithError(err).Debug("Could not build header")
+		return nil, err
+	}
+
+	// TODO: send auth to connection
+	logger.Debug("Dialing a remote connection")
+	conn, err := mux.Dial("tcp4", remoteAddress, header, nil)
+	if err != nil {
+		return nil, err
+	}
+	if p.useTLS {
+		conn = tls.Client(conn, &tls.Config{InsecureSkipVerify: true})
+	}
+	return conn, err
 }

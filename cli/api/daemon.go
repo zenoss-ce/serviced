@@ -570,6 +570,20 @@ func createMuxListener() net.Listener {
 	})
 	log.Debug("Starting traffic multiplexer")
 
+	/*
+		listener, err := mux.Listen("tcp", fmt.Sprintf(":&d", options.MuxPort), auth)
+		if err != nil {
+			// FATAL
+		}
+		if !options.MuxDisableTLS {
+			listener, err = tls.NewListener(listener, getTLSConfig("mux"))
+			if err != nil {
+				// FATAL
+			}
+		}
+		return listener
+	*/
+
 	if !options.MuxDisableTLS {
 		tlsConfig, err := getTLSConfig("mux")
 		if err != nil {
@@ -601,6 +615,11 @@ func delegateHasDFSAccess() bool {
 func (d *daemon) startAgent() error {
 	options := config.GetOptions()
 	muxListener := createMuxListener()
+
+	/*
+		go http.Serve(muxListener, nil)
+	*/
+
 	mux, err := proxy.NewTCPMux(muxListener)
 	if err != nil {
 		log.WithError(err).Fatal("Could not start TCP multiplexer")

@@ -19,9 +19,11 @@ import (
 	"os"
 	"strings"
 
+	"github.com/Sirupsen/logrus"
 	"github.com/codegangsta/cli"
 	"github.com/control-center/serviced/servicedversion"
 	"github.com/control-center/serviced/utils"
+	"github.com/zenoss/logri"
 )
 
 func main() {
@@ -56,5 +58,6 @@ func main() {
 	}
 
 	app.Action = CmdServiceProxy
+	logri.SetLevel(logrus.DebugLevel)
 	app.Run(os.Args)
 }

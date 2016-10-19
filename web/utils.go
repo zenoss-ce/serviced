@@ -137,6 +137,7 @@ func getRemoteConnection(export *registry.ExportDetails, dialer dialerInterface)
 		return nil, err
 	}
 
+<<<<<<< Updated upstream
 	var (
 		token        string
 		tokenTimeout = 30 * time.Second
@@ -150,13 +151,16 @@ func getRemoteConnection(export *registry.ExportDetails, dialer dialerInterface)
 	}
 
 	muxHeader, err = auth.BuildAuthMuxHeader(muxHeader, token)
+=======
+	muxAuthHeader, err := auth.BuildMuxHeader(muxHeader)
+>>>>>>> Stashed changes
 	if err != nil {
 		plog.WithError(err).Error("Error building authenticated mux header.")
 		return nil, err
 	}
 
 	// Check for errors writing the mux header.
-	if _, err = remote.Write(muxHeader); err != nil {
+	if _, err = remote.Write(muxAuthHeader); err != nil {
 		return nil, err
 	}
 

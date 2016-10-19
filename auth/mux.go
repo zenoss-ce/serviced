@@ -17,7 +17,13 @@ import (
 	"bytes"
 	"errors"
 	"io"
+<<<<<<< Updated upstream
 	"net"
+=======
+
+	"github.com/Sirupsen/logrus"
+	"github.com/control-center/serviced/proxy"
+>>>>>>> Stashed changes
 )
 
 /*
@@ -37,6 +43,7 @@ const (
 var (
 	ErrBadMuxAddress = errors.New("Bad mux address")
 	ErrBadMuxHeader  = errors.New("Bad mux header")
+<<<<<<< Updated upstream
 )
 
 func BuildAuthMuxHeader(address []byte, token string) ([]byte, error) {
@@ -53,39 +60,54 @@ func BuildAuthMuxHeader(address []byte, token string) ([]byte, error) {
 
 	// add token
 	headerBuf.Write([]byte(token))
+=======
+	ErrBadToken      = errors.New("Could not extract token")
+)
 
-	// add address
-	headerBuf.Write([]byte(address))
+const (
+	SignatureLenBytes = 256
+)
 
-	// Sign what we have so far
-	signature, err := SignAsDelegate(headerBuf.Bytes())
-	if err != nil {
-		return nil, err
-	}
-	// add signature to header
-	headerBuf.Write(signature)
+type Signature [SignatureLenBytes]byte
+>>>>>>> Stashed changes
 
-	return headerBuf.Bytes(), nil
+func (s Signature) ReadFrom(r io.Reader) (n int64, err error) {
+	return io.ReadFull(r, s[:])
 }
 
-func errorExtractingHeader(err error) ([]byte, Identity, error) {
-	return nil, nil, err
+func (s Signature) WriteTo(w io.WriteTo) (n int64, err error) {
+	return w.Write(s[:])
 }
 
-func ExtractMuxHeader(rawHeader []byte) ([]byte, Identity, error) {
-	if len(rawHeader) <= TOKEN_LEN_BYTES+ADDRESS_BYTES {
-		return errorExtractingHeader(ErrBadMuxHeader)
+func (s Signature) Bytes() []byte {
+	return s[:]
+}
+
+func init() {
+	log.SetLevel(logrus.DebugLevel, true)
+}
+
+// Write writes the mux auth header to the stream
+func WriteMuxHeader(w io.Writer, address proxy.MuxHeader, token Token) error {
+	// set up a multi writer, for signing
+	buf := &bytes.Buffer{}
+	multi := io.MultiWriter(w, buf)
+
+	// write the token
+	if _, err := token.WriteTo(multi); err != nil {
+		log.WithError(err).Debug("Could not write token")
+		return err
 	}
+	log.Debug("Wrote the token")
 
-	var offset uint32 = 0
-
-	// First four bytes represents the token length
-	tokenLen := endian.Uint32(rawHeader[offset : offset+TOKEN_LEN_BYTES])
-	offset += TOKEN_LEN_BYTES
-	if len(rawHeader) <= TOKEN_LEN_BYTES+int(tokenLen)+ADDRESS_BYTES {
-		return errorExtractingHeader(ErrBadMuxHeader)
+	// write the mux header address
+	if _, err := address.WriteTo(multi); err != nil {
+		log.WithError(err).Debug("Could not write mux header address")
+		return err
 	}
+	log.Debug("Wrote the mux header address")
 
+<<<<<<< Updated upstream
 	// Next tokeLen bytes contain the token
 	token := string(rawHeader[offset : offset+tokenLen])
 	offset += tokenLen
@@ -98,30 +120,65 @@ func ExtractMuxHeader(rawHeader []byte) ([]byte, Identity, error) {
 	if senderIdentity == nil {
 		return errorExtractingHeader(ErrBadToken)
 	}
-
-	// Next six bytes is going to be the address
-	address := rawHeader[offset : offset+ADDRESS_BYTES]
-	offset += ADDRESS_BYTES
-
-	// get the part of the header that has been signed
-	signed_message := rawHeader[:offset]
-
-	// Whatever is left is the signature
-	signature := rawHeader[offset:]
-
-	// Verify the identity of the signed message
-	senderVerifier, err := senderIdentity.Verifier()
+=======
+	// sign the header
+	signature, err := SignAsDelegate(buf.Bytes())
 	if err != nil {
-		return errorExtractingHeader(err)
+		log.WithError(err).Debug("Could not sign header")
+		return err
 	}
-	err = senderVerifier.Verify(signed_message, signature)
-	if err != nil {
-		return errorExtractingHeader(err)
+	log.Debug("Signed header")
+>>>>>>> Stashed changes
+
+	// write the signature (from the raw writer; do not tee)
+	if _, err := signature.WriteTo(w); err != nil {
+		log.WithError(err).Debug("Could not write signature")
+		return err
 	}
 
-	return address, senderIdentity, nil
+	log.Debug("Encoded message")
+	return nil
 }
 
+// ReadMuxHeader reads the auth header and returns the identity.
+func ReadMuxHeader(r io.Reader) (MuxHeader, Identity, error) {
+	// set up a tee reader to verify the signature
+	buf := &bytes.Buffer{}
+	tee := io.TeeReader(r, buf)
+
+	// read the token
+	var t Token
+	if _, err := t.ReadFrom(tee); err != nil {
+		log.WithError(err).Debug("Could not read token")
+		return MuxHeader{}, nil, err
+	}
+	log.Debug("Read the token")
+
+	// validate the token
+	identity, err := ParseJWTIdentity()
+	if err != nil {
+		log.WithError(err).Debug("Could not parse identity from token")
+		return MuxHeader{}, nil, ErrBadToken
+	}
+	log.Debug("Parsed the token identity")
+
+	// get the verifier of the token
+	verifier, err := identity.Verifier()
+	if err != nil {
+		log.WithError(err).Debug("Could not get token verifier")
+		return MuxHeader{}, nil, err
+	}
+	log.Debug("Receieved token verifier")
+
+	// read the mux header (address)
+	var address MuxHeader
+	if _, err := address.ReadFrom(tee); err != nil {
+		log.WithError(err).Debug("Could not read mux header address")
+		return MuxHeader{}, nil, err
+	}
+	log.Debug("Read the mux header address")
+
+<<<<<<< Updated upstream
 func ReadMuxHeader(conn net.Conn) ([]byte, error) {
 	// Read token Length
 	tokenLenBuff := make([]byte, TOKEN_LEN_BYTES)
@@ -135,6 +192,22 @@ func ReadMuxHeader(conn net.Conn) ([]byte, error) {
 	_, err = io.ReadFull(conn, remainderBuff)
 	if err != nil {
 		return nil, err
+=======
+	// read the signature (from the raw reader; do not tee)
+	var signature Signature
+	if _, err := signature.ReadFrom(r); err != nil {
+		log.WithError(err).Debug("Could not read the signature")
+		return MuxHeader{}, nil, err
 	}
-	return append(tokenLenBuff, remainderBuff...), nil
+	log.Debug("Read the signature")
+
+	// verify the message
+	if err := verifier.Verify(buf.Bytes(), signature.Bytes()); err != nil {
+		log.WithError(err).Debug("Could not verify the signature")
+		return MuxHeader{}, nil, err
+>>>>>>> Stashed changes
+	}
+
+	log.Debug("Connection authenticated")
+	return address, identity, err
 }

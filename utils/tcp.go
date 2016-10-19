@@ -30,7 +30,7 @@ var (
 )
 
 // PackTCPAddress packs a TCP address (IP and port) to 6 bytes
-func PackTCPAddress(ip string, port uint16) ([]byte, error) {
+func PackTCPAddress(ip string, port uint16) (out [6]byte, err error) {
 	var result bytes.Buffer
 
 	// Pack the port to 2 bytes
@@ -41,25 +41,26 @@ func PackTCPAddress(ip string, port uint16) ([]byte, error) {
 	// Pack the ip address to 4 bytes
 	ipaddr := net.ParseIP(ip)
 	if ipaddr == nil {
-		return nil, ErrInvalidTCPAddress
+		return [6]byte{}, ErrInvalidTCPAddress
 	}
 	ipbytes := ipaddr.To4()
 	result.Write(ipbytes)
 
-	return result.Bytes(), nil
+	result.Read(out[:])
+	return out, nil
 }
 
 // PackTCPAddressString packs a TCP address represented as a string ("IP:port")
 // to 6 bytes
-func PackTCPAddressString(address string) ([]byte, error) {
+func PackTCPAddressString(address string) ([6]byte, error) {
 	parts := strings.Split(address, ":")
 	if len(parts) != 2 {
-		return nil, ErrInvalidTCPAddress
+		return [6]byte{}, ErrInvalidTCPAddress
 	}
 	ip := parts[0]
 	intport, err := strconv.Atoi(parts[1])
 	if err != nil || uint16(intport) == 0 {
-		return nil, ErrInvalidTCPAddress
+		return [6]byte{}, ErrInvalidTCPAddress
 	}
 	port := uint16(intport)
 	return PackTCPAddress(ip, port)

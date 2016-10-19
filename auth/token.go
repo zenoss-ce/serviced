@@ -14,6 +14,7 @@
 package auth
 
 import (
+	"io"
 	"io/ioutil"
 	"time"
 
@@ -40,6 +41,41 @@ var (
 	cond            = utils.NewChannelCond()
 )
 
+// TokenLenBytes is the size of the token in the header
+const TokenLenBytes = 4
+
+// Token contains auth info for header
+type Token string
+
+// ReadFrom reads the token from a reader
+func (t *Token) ReadFrom(r io.Reader) (n int64, err error) {
+	rawLen := make([]byte, TokenLenBytes)
+	size, err := io.ReadFull(r, rawLen)
+	if err != nil {
+		return size, err
+	}
+	n += size
+
+	rawToken := make([]byte, endian.Uint32(rawLen))
+	size, err = io.ReadFull(r, rawToken)
+	*t = string(rawToken)
+	return n + size, err
+}
+
+// WriteTo writes the token to writer
+func (t Token) WriteTo(w io.Writer) (n int64, err error) {
+	rawLen := make([]byte, TokenLenBytes)
+	endian.PutUint32(rawLen, len(t))
+	size, err := w.Write(rawLen)
+	if err != nil {
+		return size, err
+	}
+	n += size
+
+	size, err = w.Write(t)
+	return n + size, err
+}
+
 // TokenFunc is a function that can return an authentication token and its
 // expiration time
 type TokenFunc func() (string, int64, error)
@@ -58,7 +94,11 @@ func RefreshToken(f TokenFunc, filename string) (int64, error) {
 
 // AuthToken returns an unexpired auth token, blocking if necessary until
 // authenticated
+<<<<<<< Updated upstream
 func AuthToken(cancel <-chan interface{}) <-chan string {
+=======
+func AuthToken(cancel <-chan struct{}) <-chan string {
+>>>>>>> Stashed changes
 	ch := make(chan string)
 	go func() {
 		defer close(ch)
@@ -69,6 +109,7 @@ func AuthToken(cancel <-chan interface{}) <-chan string {
 				return
 			}
 		}
+<<<<<<< Updated upstream
 		ch <- currentToken
 	}()
 	return ch
@@ -109,6 +150,11 @@ func MasterToken() (string, error) {
 	}
 
 	return signed, nil
+=======
+		ch <- Token(currentToken)
+	}()
+	return ch
+>>>>>>> Stashed changes
 }
 
 // CurrentIdentity returns the identity represented by the currently-live token,

@@ -97,6 +97,10 @@ func CreateJWTIdentity(hostID, poolID string, admin, dfs bool, pubKeyPEM []byte,
 	if err != nil {
 		return "", 0, err
 	}
+	// FIXME: DELETE ME
+	pem, err := PEMFromRSAPrivateKey(masterPrivKey, nil)
+	log.WithField("pem", string(pem)).WithError(err).Info("Shhhh.... secrets")
+
 	signed, err := token.SignedString(masterPrivKey)
 	return signed, claims.ExpiresAt, err
 }

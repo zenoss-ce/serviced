@@ -31,6 +31,36 @@ var (
 	log = logging.PackageLogger()
 )
 
+func init() {
+	log.SetLevel(logrus.DebugLevel, true)
+}
+
+// MuxHeaderLenBytes defines the size of the mux header
+const MuxHeaderLenBytes = 6
+
+// MuxHeader is the raw header to be read by the mux
+type MuxHeader [MuxHeaderLenBytes]byte
+
+func MuxHeaderFromAddress(address string) (MuxHeader, error) {
+	rawHeader, err := utils.PackTCPAddressString(address)
+	if err != nil {
+		return nil, err
+	}
+	var muxHeader [MuxHeaderLenBytes]byte
+	copy(muxHeader[:], rawHeader)
+	return MuxHeader(muxHeader), nil
+}
+
+// ReadFrom reads the mux header from a reader
+func (m MuxHeader) ReadFrom(r io.Reader) (n int64, err error) {
+	return io.ReadFull(r, m[:])
+}
+
+// WriteTo writes the header to a writer
+func (m MuxHeader) WriteTo(w io.Writer) (n int64, err error) {
+	return w.Write(m[:])
+}
+
 // TCPMux is an implementation of tcp muxing RFC 1078.
 type TCPMux struct {
 	listener    net.Listener    // the connection this mux listens on
@@ -149,8 +179,14 @@ func (mux *TCPMux) muxConnection(conn net.Conn) {
 		conn.Close()
 		return
 	}
+	log.WithField("headersize", len(authMuxHeader)).Debug("Read auth mux header")
 	// TODO retrieve and validate the identity of the sender
 	muxHeader, _, err := auth.ExtractMuxHeader(authMuxHeader)
+	if err != nil {
+		log.WithError(err).Warn("Unable to extract mux header. Closing connection")
+		conn.Close()
+		return
+	}
 
 	address := utils.UnpackTCPAddressToString(muxHeader)
 

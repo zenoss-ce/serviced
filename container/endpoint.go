@@ -16,10 +16,8 @@ package container
 import (
 	"errors"
 	"fmt"
-	"net"
 	"os"
 	"regexp"
-	"sync"
 	"time"
 
 	log "github.com/Sirupsen/logrus"
@@ -35,18 +33,19 @@ type ContainerEndpointsOptions struct {
 	TenantID             string
 	InstanceID           int
 	IsShell              bool
-	TCPMuxPort           uint16
 	UseTLS               bool
+	TCPMuxPort           uint16
 	VirtualAddressSubnet string
 }
 
 // ContainerEndpoints manages import and export bindings for the instance.
 type ContainerEndpoints struct {
-	opts  ContainerEndpointsOptions
-	state *zkservice.State
-	cache *proxyCache
-	ports map[uint16]struct{}
-	vifs  *VIFRegistry
+	opts          ContainerEndpointsOptions
+	useDirectConn bool
+	state         *zkservice.State
+	cache         *ContainerProxyCache
+	ports         map[uint16]struct{}
+	vifs          *VIFRegistry
 }
 
 // NewContainerEndpoints loads the service state and manages port bindings
@@ -60,13 +59,9 @@ func NewContainerEndpoints(svc *service.Service, opts ContainerEndpointsOptions)
 	}
 
 	// load the state object
-	allowDirect, err := ce.loadState(svc)
-	if err != nil {
+	if err := ce.loadState(svc); err != nil {
 		return nil, err
 	}
-
-	// set up the proxy cache
-	ce.cache = newProxyCache(opts.TenantID, opts.TCPMuxPort, opts.UseTLS, allowDirect)
 
 	// set up virtual interface registry
 	if err := ce.vifs.SetSubnet(opts.VirtualAddressSubnet); err != nil {
@@ -77,7 +72,7 @@ func NewContainerEndpoints(svc *service.Service, opts ContainerEndpointsOptions)
 }
 
 // loadState loads state information for the container
-func (ce *ContainerEndpoints) loadState(svc *service.Service) (bool, error) {
+func (ce *ContainerEndpoints) loadState(svc *service.Service) error {
 	logger := plog.WithFields(log.Fields{
 		"hostid":      ce.opts.HostID,
 		"serviceid":   svc.ID,
@@ -85,14 +80,14 @@ func (ce *ContainerEndpoints) loadState(svc *service.Service) (bool, error) {
 		"instanceid":  ce.opts.InstanceID,
 	})
 
-	allowDirect := true
+	ce.useDirectConn = true
 
 	if ce.opts.IsShell {
 		// get the hostname
 		hostname, err := os.Hostname()
 		if err != nil {
 			logger.WithError(err).Debug("Could not get the hostname to check the docker id")
-			return false, err
+			return err
 		}
 
 		// this is not a running instance so load whatever data is
@@ -111,7 +106,7 @@ func (ce *ContainerEndpoints) loadState(svc *service.Service) (bool, error) {
 		for _, ep := range svc.Endpoints {
 			if ep.Purpose != "export" {
 				if ep.Purpose == "import_all" {
-					allowDirect = false
+					ce.useDirectConn = false
 				}
 				binds = append(binds, zkservice.ImportBinding{
 					Application:    ep.Application,
@@ -131,7 +126,7 @@ func (ce *ContainerEndpoints) loadState(svc *service.Service) (bool, error) {
 		conn, err := zzk.GetLocalConnection("/")
 		if err != nil {
 			logger.WithError(err).Debug("Cannot connect to the coordination server")
-			return false, err
+			return err
 		}
 
 		logger.Debug("Connected to the coordination server")
@@ -161,18 +156,18 @@ func (ce *ContainerEndpoints) loadState(svc *service.Service) (bool, error) {
 		case err := <-errc:
 			if err != nil {
 				logger.WithError(err).Debug("Could not load state")
-				return false, err
+				return err
 			}
 		case <-timer.C:
 			close(cancel)
 			<-errc
 			logger.Debug("Timeout waiting for state")
-			return false, errors.New("timeout waiting for state")
+			return errors.New("timeout waiting for state")
 		}
 
 		for _, bind := range ce.state.Imports {
 			if bind.Purpose == "import_all" {
-				allowDirect = false
+				ce.useDirectConn = false
 				break
 			}
 		}
@@ -180,11 +175,14 @@ func (ce *ContainerEndpoints) loadState(svc *service.Service) (bool, error) {
 		logger.Debug("Loaded state for service instance")
 	}
 
-	return allowDirect, nil
+	return nil
 }
 
 // Run manages the container endpoints
 func (ce *ContainerEndpoints) Run(cancel <-chan struct{}) {
+
+	// set up the container proxy cache
+	ce.cache = NewContainerProxyCache(cancel, ce.opts.UseTLS, ce.useDirectConn)
 
 	// register all of the exports
 	for _, bind := range ce.state.Exports {
@@ -461,94 +459,4 @@ func (ce *ContainerEndpoints) UpdateRemoteExports(bind zkservice.ImportBinding, 
 			exLogger.Debug("Registered virtual address")
 		}
 	}
-}
-
-type proxyKey struct {
-	Application string
-	PortNumber  uint16
-}
-
-type proxyCache struct {
-	mu    *sync.Mutex
-	cache map[proxyKey]*proxy
-
-	tenantID    string
-	tcpMuxPort  uint16
-	useTLS      bool
-	allowDirect bool
-}
-
-func newProxyCache(tenantID string, tcpMuxPort uint16, useTLS, allowDirect bool) *proxyCache {
-	return &proxyCache{
-		mu:          &sync.Mutex{},
-		cache:       make(map[proxyKey]*proxy),
-		tenantID:    tenantID,
-		tcpMuxPort:  tcpMuxPort,
-		useTLS:      useTLS,
-		allowDirect: allowDirect,
-	}
-}
-
-// Set returns true if the key was created and an error
-func (c *proxyCache) Set(application string, portNumber uint16, exports ...registry.ExportDetails) (bool, error) {
-	logger := plog.WithFields(log.Fields{
-		"application": application,
-		"portnumber":  portNumber,
-	})
-
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	key := proxyKey{
-		Application: application,
-		PortNumber:  portNumber,
-	}
-
-	// check if the key exists
-	prxy, ok := c.cache[key]
-	if !ok {
-
-		logger.Debug("Setting up new proxy")
-
-		// start the listener on the provided port
-		listener, err := net.Listen("tcp4", fmt.Sprintf(":%d", portNumber))
-		if err != nil {
-			logger.WithError(err).Debug("Could not open port")
-			return false, err
-		}
-
-		logger.Debug("Started port listener")
-
-		// create the proxy
-		prxy, err = newProxy(
-			fmt.Sprintf("%s-%d", application, portNumber),
-			fmt.Sprintf("%s-%s-%d", c.tenantID, application, portNumber),
-			c.tcpMuxPort,
-			c.useTLS,
-			listener,
-			c.allowDirect,
-		)
-		if err != nil {
-			logger.WithError(err).Debug("Could not start proxy")
-			return false, err
-		}
-
-		logger.Debug("Created new proxy for port")
-		c.cache[key] = prxy
-
-	}
-
-	// update the proxy addresses
-	addresses := make([]addressTuple, len(exports))
-	for i, export := range exports {
-		addresses[i] = addressTuple{
-			host:          export.HostIP,
-			containerAddr: fmt.Sprintf("%s:%d", export.PrivateIP, export.PortNumber),
-		}
-	}
-	prxy.SetNewAddresses(addresses)
-
-	logger.Debug("Set exports for proxy")
-
-	return !ok, nil
 }

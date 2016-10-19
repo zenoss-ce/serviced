@@ -14,17 +14,32 @@
 package mux
 
 import (
+<<<<<<< Updated upstream
+=======
+	"crypto/tls"
+>>>>>>> Stashed changes
 	"io"
 	"net"
 )
 
 // Dial dials a muxed connection with the provided header and auth
+<<<<<<< Updated upstream
 func Dial(net, address string, header *Header, auth Signer) (conn net.Conn, err error) {
+=======
+func Dial(net, address string, header *Header, auth Signer, useTLS bool) (conn net.Conn, err error) {
+>>>>>>> Stashed changes
 	conn, err = net.Dial(net, address)
 	if err != nil {
 		return
 	}
 
+<<<<<<< Updated upstream
+=======
+	if useTLS {
+		conn = tls.Client(conn, &tls.Config{InsecureSkipVerify: true})
+	}
+
+>>>>>>> Stashed changes
 	_, err = WriteHeader(conn, header, auth)
 	if err != nil {
 		conn.Close()
@@ -41,7 +56,11 @@ type Listener struct {
 }
 
 // Listen creates a listener with an auth verifier
+<<<<<<< Updated upstream
 func Listen(net, address, auth Verifier) (*Listener, err) {
+=======
+func Listen(net, address string, auth Verifier) (*Listener, error) {
+>>>>>>> Stashed changes
 	listener, err := net.Listen(net, address)
 	if err != nil {
 		return nil, err
@@ -54,7 +73,11 @@ func Listen(net, address, auth Verifier) (*Listener, err) {
 func (l *Listener) Accept() (conn net.Conn, err error) {
 	for {
 		// receive the request
+<<<<<<< Updated upstream
 		remote, err := l.listener.Accept()
+=======
+		conn, err = l.listener.Accept()
+>>>>>>> Stashed changes
 		if err != nil {
 			return
 		}
@@ -68,19 +91,29 @@ func (l *Listener) Accept() (conn net.Conn, err error) {
 		}
 
 		// dial the local connection
+<<<<<<< Updated upstream
 		conn, err = net.Dial(l.listener.Addr().Network(), header.Address())
+=======
+		local, err := net.Dial(l.listener.Addr().Network(), header.Address())
+>>>>>>> Stashed changes
 		if err != nil {
 			// TODO: write dialer error to the connection
 			remote.Close()
 			continue
 		}
 
+<<<<<<< Updated upstream
 		// proxy the request and return the local connection
 		proxy(remote, conn)
+=======
+		// proxy the request and return the connection
+		proxy(conn, local)
+>>>>>>> Stashed changes
 		return
 	}
 }
 
+<<<<<<< Updated upstream
 func proxy(remote, local net.Conn) {
 	go func() {
 		io.Copy(remote, local)
@@ -95,6 +128,8 @@ func proxy(remote, local net.Conn) {
 	}()
 }
 
+=======
+>>>>>>> Stashed changes
 // Addr returns the listener address
 func (l *Listener) Addr() net.Addr {
 	return l.listener.Addr()
@@ -104,3 +139,20 @@ func (l *Listener) Addr() net.Addr {
 func (l *Listener) Close() error {
 	return l.listener.Close()
 }
+<<<<<<< Updated upstream
+=======
+
+func proxy(a, b net.Conn) {
+	go func() {
+		io.Copy(a, b)
+		b.Close()
+		a.Close()
+	}()
+
+	go func() {
+		io.Copy(b, a)
+		a.Close()
+		b.Close()
+	}()
+}
+>>>>>>> Stashed changes
