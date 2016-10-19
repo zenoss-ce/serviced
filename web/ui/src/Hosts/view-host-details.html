@@ -4,13 +4,12 @@
     <div class="serviceControls" sticky sticky-class="stickied">
 
         <h2 class="serviceTitle">
-            <div ng-if="currentHost.active" class="passed" style="position: absolute; top: 6px; left: 4px; height: 22px;"><i class="healthIcon glyphicon"></i></div>
-            <div ng-if="!currentHost.active" class="failed" style="position: absolute; top: 6px; left: 4px; height: 22px;"><i class="healthIcon glyphicon"></i></div>
+            <host-icon data-get-host-status="getHostStatus" data-host="currentHost" style="position: absolute; top: 6px; left: 4px; height: 22px;"></host-icon>
             <span style="position: relative; top: 0; left: 35px;"> {{currentHost.name}}</span>
         </h2>
 
         <div class="serviceActions" ng-hide="services.current.isIsvc()">
-            <button ng-click="resetKeys()" class="btn btn-link action"><i class="glyphicon glyphicon-lock"></i> <span translate>Reset Keys</span></button>
+            <button ng-click="resetKeys()" class="btn btn-link action"><i class="glyphicon glyphicon-lock"></i> <span translate>btn_reset_keys</span></button>
             <button ng-click="editCurrentHost()" class="btn btn-link action"><i class="glyphicon glyphicon-edit"></i> <span translate>title_edit_host</span></button>
         </div>
         <div class="serviceBoxGradient"></div>

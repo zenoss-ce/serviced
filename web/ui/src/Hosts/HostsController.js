@@ -37,7 +37,7 @@
                         role: "cancel",
                     },{
                         role: "ok",
-                        label: "Next",
+                        label: "btn_next",
                         icon: "glyphicon-chevron-right",
                         action: function(){
                             if(this.validate()){
@@ -51,7 +51,7 @@
 
                                 resourcesFactory.addHost($scope.newHost)
                                     .success(function(data, status){
-                                        $modalService.modals.displayHostKeys(data.PrivateKey, $scope.newHost.host);
+                                        $modalService.modals.displayHostKeys(data.PrivateKey, data.Registered, $scope.newHost.host);
                                         update();
                                     }.bind(this))
                                     .error(function(data, status){
@@ -119,6 +119,40 @@
             resourcesFactory.routeToPool(poolID);
         };
 
+        // TODO - move this to Host.js when v2 stuff drops
+        // provide a way for hostIcon to get statuses
+        $scope.getHostStatus = function(id){
+            if($scope.hostStatuses){
+                return $scope.hostStatuses[id];
+            }
+        };
+        $scope.getHostStatusClass = function(host){
+            let status = $scope.getHostStatus(host.id);
+
+            // stuff hasnt loaded, so unknown
+            if(!status){
+                return "unknown";
+            }
+
+            let active = status.Active,
+                authed = status.Authenticated;
+
+            // connected and authenticated
+            if(active && authed){
+                return "passed";
+
+            // connected but not yet authenticated
+            } else if(active && !authed){
+                // TODO - something more clearly related to auth
+                return "unknown";
+
+            // not connected
+            } else {
+                return "failed";
+            }
+        };
+
+
         function update(){
             hostsFactory.update()
                 .then(() => {
@@ -160,6 +194,19 @@
             // update hosts
             update();
 
+            // TODO - remove this and consolidate with v2
+            // status polling
+            $scope.hostStatusInterval = $interval(() => {
+                resourcesFactory.getHostStatuses()
+                    .then(data => {
+                        let statuses = {};
+                        data.forEach(s => statuses[s.HostID] = s);
+                        $scope.hostStatuses = statuses;
+                    }, err => {
+                        console.log("err", err);
+                    });
+            }, 3000);
+
             servicesFactory.activate();
             hostsFactory.activate();
             poolsFactory.activate();
@@ -171,6 +218,7 @@
             hostsFactory.deactivate();
             servicesFactory.deactivate();
             poolsFactory.deactivate();
+            $interval.cancel($scope.hostStatusInterval);
         });
     }]);
 })();

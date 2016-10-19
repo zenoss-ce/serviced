@@ -14,13 +14,9 @@
 package isvcs
 
 import (
-	"archive/tar"
-	"compress/gzip"
 	"os"
-	"path/filepath"
 
 	"github.com/Sirupsen/logrus"
-	"github.com/control-center/serviced/volume"
 	"github.com/zenoss/elastigo/cluster"
 
 	"encoding/json"
@@ -154,45 +150,14 @@ func initElasticSearch() {
 	// /etc/default/serviced
 	envPerService[serviceName]["ES_JAVA_OPTS"] = "-Xmx4g"
 	elasticsearch_logstash.Command = func() string {
-		clusterArg := ""
-		if clusterName, ok := elasticsearch_logstash.Configuration["cluster"]; ok {
-			clusterArg = fmt.Sprintf(" -Des.cluster.name=%s ", clusterName)
-		}
-		return fmt.Sprintf(`exec /opt/elasticsearch-logstash/bin/elasticsearch -Des.insecure.allow.root=true -Des.node.name=%s %s`, elasticsearch_logstash.Name, clusterArg)
+		nodeName := elasticsearch_logstash.Name
+		clusterName := elasticsearch_logstash.Configuration["cluster"]
+		return fmt.Sprintf("exec /opt/elasticsearch-logstash/bin/es-logstash-start.sh %s %s", nodeName, clusterName)
 	}
 }
 
 func recoverES(path string) error {
-	log := log.WithFields(logrus.Fields{
-		"path": path,
-	})
-	if err := func() error {
-		file, err := os.Create(path + "-backup.tgz")
-		if err != nil {
-			log.WithError(err).Debug("Unable to create backup")
-			return err
-		}
-		defer file.Close()
-		gz := gzip.NewWriter(file)
-		defer gz.Close()
-		tarfile := tar.NewWriter(gz)
-		defer tarfile.Close()
-		if err := volume.ExportDirectory(tarfile, path, filepath.Base(path)); err != nil {
-			log.WithError(err).Debug("Unable to back up")
-			return err
-		}
-		if err := volume.ExportFile(tarfile, path+".clustername", filepath.Base(path)+".clustername"); err != nil {
-			return err
-		}
-		return nil
-	}(); err != nil {
-		return err
-	}
-	if err := os.RemoveAll(path); err != nil {
-		log.WithError(err).Debug("Unable to remove backup")
-		return err
-	}
-	return nil
+	return os.Rename(path, path+"-backup")
 }
 
 type esres struct {
