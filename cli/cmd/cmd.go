@@ -348,6 +348,7 @@ func getRuntimeOptions(cfg utils.ConfigReader, ctx *cli.Context) config.Options 
 		options.MuxDisableTLS = true
 	}
 
+	// Record the RPC port so that utils.HostID() can use it.
 	utils.SetRpcPort(options.Listen)
 
 	// Set the logging configuration filename.
