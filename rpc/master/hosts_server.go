@@ -26,7 +26,8 @@ import (
 )
 
 var (
-	ErrRequestExpired = errors.New("Authentication request expired")
+	ErrRequestExpired    = errors.New("Authentication request expired")
+	ErrHostNotAuthorized = errors.New("Host not authorized to update other hosts")
 )
 
 // GetHost gets the host
@@ -72,9 +73,15 @@ func (s *Server) AddHost(host host.Host, hostReply *[]byte) error {
 	return nil
 }
 
-// UpdateHost updates the host
-func (s *Server) UpdateHost(host host.Host, _ *struct{}) error {
-	return s.f.UpdateHost(s.context(), &host)
+// UpdateHost updates the host after verifying that the host making the request
+// either has admin privileges or is the same as the one being changed.
+func (s *Server) UpdateHost(entity host.HostWithIdentity, _ *struct{}) error {
+	host := entity.Host()
+	identity := entity.Identity()
+	if identity.HasAdminAccess() == false && host.ID != identity.HostID() {
+		return ErrHostNotAuthorized
+	}
+	return s.f.UpdateHost(s.context(), host)
 }
 
 // RemoveHost removes the host

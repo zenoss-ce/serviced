@@ -57,8 +57,9 @@ func (c *Client) AddHost(host host.Host) ([]byte, error) {
 }
 
 //UpdateHost updates a host
-func (c *Client) UpdateHost(host host.Host) error {
-	return c.call("UpdateHost", host, nil)
+func (c *Client) UpdateHost(h host.Host) error {
+	hostWithIdentity := host.NewHostWithIdentity(&h)
+	return c.call("UpdateHostWithIdentity", hostWithIdentity, nil)
 }
 
 //RemoveHost removes a host
