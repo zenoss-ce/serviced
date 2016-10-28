@@ -103,6 +103,7 @@ type AuthServerCodec struct {
 	parser       auth.RPCHeaderParser
 	wBuffMutex   sync.Mutex // Make sure we buffer one response at a time
 	lastError    error
+	identity     auth.Identity
 }
 
 func NewDefaultAuthServerCodec(conn io.ReadWriteCloser) rpc.ServerCodec {
@@ -131,6 +132,7 @@ func (a *AuthServerCodec) ReadRequestHeader(r *rpc.Request) error {
 	// Reset state
 	a.lastError = nil
 	a.buff.ReadBuff.Reset()
+	a.identity = nil
 
 	ident, body, err := a.parser.ReadHeader(a.conn)
 	if err != nil {
@@ -167,7 +169,7 @@ func (a *AuthServerCodec) ReadRequestHeader(r *rpc.Request) error {
 				a.lastError = ErrNoAdmin
 			}
 		}
-		//TODO: save the identity so we can inject it into the request body later
+		a.identity = ident
 	}
 	return nil
 }
@@ -179,8 +181,13 @@ func (a *AuthServerCodec) ReadRequestBody(body interface{}) error {
 	if a.lastError != nil {
 		return a.lastError
 	}
-	// TODO: Use reflection and add the identity to the body if necessary
-	return a.wrappedcodec.ReadRequestBody(body)
+	if err := a.wrappedcodec.ReadRequestBody(body); err != nil {
+		return err
+	}
+	if wi := body.(auth.WithIdentity); wi != nil {
+		wi.SetIdentity(a.identity)
+	}
+	return nil
 }
 
 //  Encodes the response before sending it back down to the client.

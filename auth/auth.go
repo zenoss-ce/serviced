@@ -86,3 +86,8 @@ type Identity interface {
 	HasDFSAccess() bool
 	Verifier() (Verifier, error)
 }
+
+type WithIdentity interface {
+	Identity() Identity
+	SetIdentity(Identity)
+}
