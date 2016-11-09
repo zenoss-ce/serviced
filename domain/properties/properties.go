@@ -19,11 +19,16 @@
 package properties
 
 import (
+	"strconv"
+
 	"github.com/control-center/serviced/datastore"
 )
 
-// CCVERSION is the key used to access the version property
-const CCVERSION = "cc.version"
+const (
+	// CCVERSION is the key used to access the version property
+	CCVERSION = "cc.version"
+	MIGRATIONVERSION = "cc.migration"
+)
 
 // New create a new StoredProperties
 func New() *StoredProperties {
@@ -45,4 +50,16 @@ func (s *StoredProperties) CCVersion() (string, bool) {
 // SetCCVersion sets the CC version property
 func (s *StoredProperties) SetCCVersion(version string) {
 	s.Props[CCVERSION] = version
+}
+
+func (s *StoredProperties) MigrationVersion() int {
+	if val, ok := s.Props[MIGRATIONVERSION]; ok {
+		version, _ := strconv.ParseInt(val, 10, 0)
+		return int(version)
+	}
+	return 0
+}
+
+func (s *StoredProperties) SetMigrationVersion(version int) {
+	s.Props[MIGRATIONVERSION] = strconv.Itoa(version)
 }

@@ -44,6 +44,7 @@ import (
 	"github.com/control-center/serviced/isvcs"
 	"github.com/control-center/serviced/logging"
 	"github.com/control-center/serviced/metrics"
+	"github.com/control-center/serviced/migration"
 	"github.com/control-center/serviced/node"
 	"github.com/control-center/serviced/proxy"
 	"github.com/control-center/serviced/rpc/agent"
@@ -545,14 +546,14 @@ func (d *daemon) startMaster() (err error) {
 func (d *daemon) checkVersion() error {
 	//check version
 	var err error
-	updateCCVersion := false
+	updateCCProps := false
 	var ccProps *properties.StoredProperties
 	log.Debug("Checking CC Version")
 	if ccProps, err = properties.NewStore().Get(d.dsContext); datastore.IsErrNoSuchEntity(err) {
 		//First startup of 1.2. Could be either fresh install or upgrade
 		log.Debug("Previous stored properties not found")
 		ccProps = properties.New()
-		updateCCVersion = true
+		updateCCProps = true
 		// Run any initialization need for first startup
 		// Existing pools need all access after an upgrade. Only happens at upgrade
 		pools, err := d.facade.GetResourcePools(d.dsContext)
@@ -576,11 +577,19 @@ func (d *daemon) checkVersion() error {
 		// Update the CC Version if not current, could run upgrades here
 		ccVersion, _ := ccProps.CCVersion()
 		if servicedversion.Version != ccVersion {
-			updateCCVersion = true
+			updateCCProps = true
 		}
 	}
 
-	if updateCCVersion {
+	// Run any necessary cc migrations.
+	migrationVersion := ccProps.MigrationVersion()
+	newVersion, err := migration.Migrate(d.facade, d.dsContext, migrationVersion)
+	if newVersion != migrationVersion {
+		ccProps.SetMigrationVersion(newVersion)
+		updateCCProps = true
+	}
+
+	if updateCCProps {
 		ccProps.SetCCVersion(servicedversion.Version)
 		log.WithFields(logrus.Fields{
 			"version": servicedversion.Version,
