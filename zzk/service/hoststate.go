@@ -143,8 +143,8 @@ func (l *HostStateListener) Spawn(cancel <-chan struct{}, stateid string) {
 	)
 
 	// get container information
-	ssdat, exited, err := l.loadThread(req)
-	if err != nil {
+	ssdat, exited := l.loadThread(req)
+	if ssdat == nil {
 		return
 	}
 
@@ -194,7 +194,7 @@ func (l *HostStateListener) Spawn(cancel <-chan struct{}, stateid string) {
 				// container is not running, start it
 				ssdat, exited, err = l.handler.StartContainer(cancel, serviceid, instanceid)
 				if err != nil {
-					logger.WithError(err).Error("Coudl not start container, exiting")
+					logger.WithError(err).Error("Could not start container, exiting")
 					l.terminate(req)
 					return
 				}
@@ -318,7 +318,7 @@ func (l *HostStateListener) terminate(req StateRequest, ch <-chan time.Time) {
 
 // loadThread loads the thread from the passive map, otherwise returns the
 // data from zookeeper.
-func (l *HostStateListener) loadThread(req StateRequest) (s *ServiceState, ch <-chan time.Time, err error) {
+func (l *HostStateListener) loadThread(req StateRequest) (s *ServiceState, ch <-chan time.Time) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
@@ -339,19 +339,19 @@ func (l *HostStateListener) loadThread(req StateRequest) (s *ServiceState, ch <-
 		s = &ServiceState{}
 		if err := l.conn.Get(pth, s); err == client.ErrNoNode {
 			// node does not exist, so clean up and exit
-			if err = DeleteState(l.conn, req); err != nil {
+			if err := DeleteState(l.conn, req); err != nil {
 				logger.WithError(err).Error("Could not clean up host state, exiting")
 			}
-			return nil, nil, err
+			return nil, nil
 		} else if err != nil {
 			logger.WithError(err).Error("Could not look up service state, exiting")
-			return nil, nil, err
+			return nil, nil
 		}
 	} else {
 		s, ch = thread.s, thread.ch
 		delete(l.passive, id)
 	}
-	return s, ch, nil
+	return s, ch
 }
 
 // saveThread saves the thread to the passive map.
