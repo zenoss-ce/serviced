@@ -287,12 +287,22 @@ func (l *HostStateListener) Spawn(cancel <-chan struct{}, stateid string) {
 func (l *HostStateListener) Post(p map[string]struct{}) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
+
+	// do not exit until all goroutines have exited to prevent a race condition
+	// where the instance is created after it has been designated to shut down
+	wg := &sync.WaitGroup{}
+	defer wg.Wait()
+
 	for id, thread := range l.passive {
 		if _, ok := p[id]; !ok {
 			delete(l.passive, id)
 			_, serviceid, instanceid, _ := ParseStateID(id)
-			req := StateRequest{HostID: l.hostid, ServiceID: serviceid, InstanceID: instanceid}
-			go l.terminate(req, thread.ch)
+
+			wg.Add(1)
+			go func(req StateRequest, ch <-chan time.Time) {
+				l.terminate(req, ch)
+				wg.Done()
+			}(StateRequest{HostID: l.hostid, ServiceID: serviceid, InstanceID: instanceid}, thread.ch)
 		}
 	}
 }
