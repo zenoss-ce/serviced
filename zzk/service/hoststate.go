@@ -363,7 +363,7 @@ func (l *HostStateListener) loadThread(req StateRequest) (ss *ServiceState, ch <
 			s.ServiceState = *thread.s
 			return true
 		}); err != nil {
-			logger.WithError(err).Error("Could not update the container state, detaching from container")
+			logger.WithError(err).Error("Could not update the container state, exiting")
 			return nil, nil
 		}
 
