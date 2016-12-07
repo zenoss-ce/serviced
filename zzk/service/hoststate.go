@@ -328,7 +328,7 @@ func (l *HostStateListener) terminate(req StateRequest, ch <-chan time.Time) {
 
 // loadThread loads the thread from the passive map, otherwise returns the
 // data from zookeeper.
-func (l *HostStateListener) loadThread(req StateRequest) (s *ServiceState, ch <-chan time.Time) {
+func (l *HostStateListener) loadThread(req StateRequest) (ss *ServiceState, ch <-chan time.Time) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
@@ -346,8 +346,8 @@ func (l *HostStateListener) loadThread(req StateRequest) (s *ServiceState, ch <-
 	thread, ok := l.passive[id]
 	if !ok {
 		// no orphaned thread found, so read from zookeeper
-		s = &ServiceState{}
-		if err := l.conn.Get(pth, s); err == client.ErrNoNode {
+		ss = &ServiceState{}
+		if err := l.conn.Get(pth, ss); err == client.ErrNoNode {
 			// node does not exist, so clean up and exit
 			if err := DeleteState(l.conn, req); err != nil {
 				logger.WithError(err).Error("Could not clean up host state, exiting")
@@ -358,10 +358,19 @@ func (l *HostStateListener) loadThread(req StateRequest) (s *ServiceState, ch <-
 			return nil, nil
 		}
 	} else {
+		// set the state of the service in zookeeper
+		if err := UpdateState(l.conn, req, func(s *State) bool {
+			s.ServiceState = *thread.s
+			return true
+		}); err != nil {
+			logger.WithError(err).Error("Could not update the container state, detaching from container")
+			return nil, nil
+		}
+
 		s, ch = thread.s, thread.ch
 		delete(l.passive, id)
 	}
-	return s, ch
+	return ss, ch
 }
 
 // saveThread saves the thread to the passive map.
