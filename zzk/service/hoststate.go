@@ -109,6 +109,30 @@ func (l *HostStateListener) Pre() {
 	l.active.Add(1)
 }
 
+// Post synchronizes the passive thread list
+func (l *HostStateListener) Post(p map[string]struct{}) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+
+	// do not exit until all goroutines have exited to prevent a race condition
+	// where the instance is created after it has been designated to shut down
+	wg := &sync.WaitGroup{}
+	defer wg.Wait()
+
+	for id, thread := range l.passive {
+		if _, ok := p[id]; !ok {
+			delete(l.passive, id)
+			_, serviceid, instanceid, _ := ParseStateID(id)
+
+			wg.Add(1)
+			go func(req StateRequest, ch <-chan time.Time) {
+				l.terminate(req, ch)
+				wg.Done()
+			}(StateRequest{HostID: l.hostid, ServiceID: serviceid, InstanceID: instanceid}, thread.ch)
+		}
+	}
+}
+
 // Spawn implements zzk.Spawner.  It starts a new watcher for the given child
 // node
 func (l *HostStateListener) Spawn(cancel <-chan struct{}, stateid string) {
@@ -283,49 +307,6 @@ func (l *HostStateListener) Spawn(cancel <-chan struct{}, stateid string) {
 	}
 }
 
-// Post synchronizes the passive thread list
-func (l *HostStateListener) Post(p map[string]struct{}) {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-
-	// do not exit until all goroutines have exited to prevent a race condition
-	// where the instance is created after it has been designated to shut down
-	wg := &sync.WaitGroup{}
-	defer wg.Wait()
-
-	for id, thread := range l.passive {
-		if _, ok := p[id]; !ok {
-			delete(l.passive, id)
-			_, serviceid, instanceid, _ := ParseStateID(id)
-
-			wg.Add(1)
-			go func(req StateRequest, ch <-chan time.Time) {
-				l.terminate(req, ch)
-				wg.Done()
-			}(StateRequest{HostID: l.hostid, ServiceID: serviceid, InstanceID: instanceid}, thread.ch)
-		}
-	}
-}
-
-// terminate shuts down running containers and cleans up applicable zookeeper
-// data
-func (l *HostStateListener) terminate(req StateRequest, ch <-chan time.Time) {
-	logger := plog.WithFields(log.Fields{
-		"serviceid":  req.ServiceID,
-		"instanceid": req.InstanceID,
-	})
-
-	if err := l.handler.StopContainer(req.ServiceID, req.InstanceID); err != nil {
-		logger.WithError(err).Error("Could not stop service instance")
-	} else if ch != nil {
-		logger.WithField("terminated", <-ch).Debug("Container has exited")
-	}
-
-	if err := DeleteState(l.conn, req); err != nil {
-		logger.WithError(err).Error("Could not delete data associated with stopped instance")
-	}
-}
-
 // loadThread loads the thread from the passive map, otherwise returns the
 // data from zookeeper.
 func (l *HostStateListener) loadThread(req StateRequest) (s *ServiceState, ch <-chan time.Time) {
@@ -383,4 +364,23 @@ func (l *HostStateListener) saveThread(id string, s *ServiceState, ch <-chan tim
 		ch <-chan time.Time
 	}{s: s, ch: ch}
 	return
+}
+
+// terminate shuts down running containers and cleans up applicable zookeeper
+// data
+func (l *HostStateListener) terminate(req StateRequest, ch <-chan time.Time) {
+	logger := plog.WithFields(log.Fields{
+		"serviceid":  req.ServiceID,
+		"instanceid": req.InstanceID,
+	})
+
+	if err := l.handler.StopContainer(req.ServiceID, req.InstanceID); err != nil {
+		logger.WithError(err).Error("Could not stop service instance")
+	} else if ch != nil {
+		logger.WithField("terminated", <-ch).Debug("Container has exited")
+	}
+
+	if err := DeleteState(l.conn, req); err != nil {
+		logger.WithError(err).Error("Could not delete data associated with stopped instance")
+	}
 }
