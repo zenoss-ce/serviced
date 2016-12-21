@@ -447,6 +447,8 @@
                 instances.push(instance);
             });
 
+            this.instances = instances;
+
             // get health for this service and its instances
             this.status = serviceHealth.evaluate(this, instances);
             this.touch();
