@@ -115,7 +115,7 @@ func (a *HostAgent) AttachContainer(state *zkservice.ServiceState, serviceID str
 // StartContainer creates a new container and starts.  It returns info about
 // the container, and an event monitor to track the running state of the
 // service.
-func (a *HostAgent) StartContainer(cancel <-chan interface{}, serviceID string, instanceID int) (*zkservice.ServiceState, <-chan time.Time, error) {
+func (a *HostAgent) StartContainer(cancel <-chan struct{}, serviceID string, instanceID int) (*zkservice.ServiceState, <-chan time.Time, error) {
 	logger := plog.WithFields(log.Fields{
 		"serviceid":  serviceID,
 		"instanceid": instanceID,
@@ -166,6 +166,59 @@ func (a *HostAgent) StartContainer(cancel <-chan interface{}, serviceID string, 
 
 	go a.exposeAssignedIPs(state, ctr)
 	return state, ev, nil
+}
+
+// RestartContainer pulls the latest image from the container, before stopping
+// the service.  The listener will be notified of a container exit and
+// eventually will call StartContainer.
+func (a *HostAgent) RestartContainer(cancel <-chan struct{}, serviceID string, instanceID int) error {
+	logger := plog.WithFields(log.Fields{
+		"serviceid":  serviceID,
+		"instanceid": instanceID,
+	})
+
+	// look up the container to get the image
+	ctrName := fmt.Sprintf("%s-%d", serviceID, instanceID)
+	ctr, err := docker.FindContainer(ctrName)
+	if err == docker.ErrNoSuchContainer {
+		// container has been deleted so we will pull when the container starts
+		// again.
+		logger.Debug("Container not found")
+		return nil
+	}
+
+	if !ctr.IsRunning() {
+		// container has stopped, so we will pull when the container starts
+		// again.  The event monitor should catch this.
+		logger.Debug("Container stopped")
+		return nil
+	}
+
+	go func() {
+		for {
+			// relentlessly try to pull the image
+			_, _, err := a.pullImage(logger, cancel, ctr.Config.Image)
+			if err != nil {
+				logger.WithError(err).Debug("Could not pull the service image")
+				// wait 5 seconds and try again
+				select {
+				case <-time.After(5 * time.Second):
+					continue
+				case <-cancel:
+					return
+				}
+			}
+			logger.Debug("Pulled image")
+			break
+		}
+
+		// set the container to stop
+		if err := ctr.Stop(45 * time.Second); err != nil {
+			logger.WithError(err).Debug("Could not stop container")
+		}
+	}()
+
+	return nil
 }
 
 // ResumeContainer resumes a paused container
