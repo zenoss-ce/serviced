@@ -180,7 +180,7 @@ func (l *HostStateListener) Spawn(cancel <-chan struct{}, stateid string) {
 		hsevt, err := l.conn.GetW(hspth, hsdat, done)
 		if err == client.ErrNoNode {
 			logger.Debug("Host state was removed, exiting")
-			l.terminate(req)
+			l.terminate(req, exited)
 			return
 		} else if err != nil {
 			logger.WithError(err).Warn("Could not watch host state, detaching from container")
@@ -193,23 +193,12 @@ func (l *HostStateListener) Spawn(cancel <-chan struct{}, stateid string) {
 		ok, ssevt, err := l.conn.ExistsW(sspth, done)
 		if err != nil {
 			logger.WithError(err).Error("Could not watch service state, detaching from container")
-			l.saveThread(req)
+			l.saveThread(stateid, ssdat, exited)
 			return
 		} else if !ok {
 			logger.Debug("Service state was removed, exiting")
-			l.terminate(req)
+			l.terminate(req, exited)
 			return
-		}
-
-		// try to attach to the running container if it is still up from a
-		// previous restart
-		if exited == nil {
-			exited, err = l.handler.AttachContainer(serviceid, instanceid, ssdat)
-			if err != nil {
-				logger.WithError(err).Error("Could not attach to container, exiting")
-				l.terminate(req)
-				return
-			}
 		}
 
 		switch hsdat.DesiredState {
@@ -219,7 +208,7 @@ func (l *HostStateListener) Spawn(cancel <-chan struct{}, stateid string) {
 				ssdat, exited, err = l.handler.StartContainer(cancel, serviceid, instanceid)
 				if err != nil {
 					logger.WithError(err).Error("Could not start container, exiting")
-					l.terminate(req)
+					l.terminate(req, exited)
 					return
 				}
 				if err := UpdateState(l.conn, req, func(s *State) bool {
@@ -235,7 +224,7 @@ func (l *HostStateListener) Spawn(cancel <-chan struct{}, stateid string) {
 				// resume paused container
 				if err := l.handler.ResumeContainer(serviceid, instanceid); err != nil {
 					logger.WithError(err).Error("Could not resume paused container, exiting")
-					l.terminate(req)
+					l.terminate(req, exited)
 					return
 				}
 				ssdat.Paused = false
@@ -254,7 +243,7 @@ func (l *HostStateListener) Spawn(cancel <-chan struct{}, stateid string) {
 				// container is not paused, so pause the container
 				if err := l.handler.PauseContainer(serviceid, instanceid); err != nil {
 					logger.WithError(err).Error("Could not pause running container, exiting")
-					l.terminate(req)
+					l.terminate(req, exited)
 					return
 				}
 				ssdat.Paused = true
@@ -270,7 +259,7 @@ func (l *HostStateListener) Spawn(cancel <-chan struct{}, stateid string) {
 			}
 		case service.SVCStop:
 			logger.Debug("Stopping service")
-			l.terminate(req)
+			l.terminate(req, exited)
 			return
 		default:
 			logger.Warn("Unknown desired state")
@@ -338,17 +327,41 @@ func (l *HostStateListener) loadThread(req StateRequest) (s *ServiceState, ch <-
 			logger.WithError(err).Error("Could not look up service state, exiting")
 			return nil, nil
 		}
+
+		// attach to container if service is running from a previous restart
+		var err error
+		ch, err = l.handler.AttachContainer(req.ServiceID, req.InstanceID, s)
+		if err != nil {
+			logger.WithError(err).Error("Could not attach to container, exiting")
+			l.terminate(req, ch)
+			return nil, nil
+		}
 	} else {
-		// set the state of the service in zookeeper
-		if err := UpdateState(l.conn, req, func(s *State) bool {
-			s.ServiceState = *thread.s
-			return true
-		}); err != nil {
-			logger.WithError(err).Error("Could not update the container state, exiting")
+		// make sure the path still exists
+		ok, err := l.conn.Exists(pth)
+		if err != nil {
+			logger.WithError(err).Error("Could not check existance of service state, exiting")
 			return nil, nil
 		}
 
-		s, ch = thread.s, thread.ch
+		if ok {
+			// set the state of the service in zookeeper
+			if err := UpdateState(l.conn, req, func(s *State) bool {
+				s.ServiceState = *thread.s
+				return true
+			}); err != nil {
+				logger.WithError(err).Error("Could not update container state, exiting")
+				return nil, nil
+			}
+			s, ch = thread.s, thread.ch
+		} else {
+			// path does not exist; clean up orphaned container.
+			logger.Error("Service state not found, stopping orphaned container")
+			l.terminate(req, thread.ch)
+			s, ch = nil, nil
+		}
+
+		// switch this container from passive to active
 		delete(l.passive, id)
 	}
 	return s, ch
