@@ -115,7 +115,7 @@ func (a *HostAgent) AttachContainer(state *zkservice.ServiceState, serviceID str
 // StartContainer creates a new container and starts.  It returns info about
 // the container, and an event monitor to track the running state of the
 // service.
-func (a *HostAgent) StartContainer(cancel <-chan struct{}, serviceID string, instanceID int) (*zkservice.ServiceState, <-chan time.Time, error) {
+func (a *HostAgent) StartContainer(cancel <-chan interface{}, serviceID string, instanceID int) (*zkservice.ServiceState, <-chan time.Time, error) {
 	logger := plog.WithFields(log.Fields{
 		"serviceid":  serviceID,
 		"instanceid": instanceID,
@@ -171,7 +171,7 @@ func (a *HostAgent) StartContainer(cancel <-chan struct{}, serviceID string, ins
 // RestartContainer pulls the latest image from the container, before stopping
 // the service.  The listener will be notified of a container exit and
 // eventually will call StartContainer.
-func (a *HostAgent) RestartContainer(cancel <-chan struct{}, serviceID string, instanceID int) error {
+func (a *HostAgent) RestartContainer(cancel <-chan interface{}, serviceID string, instanceID int) error {
 	logger := plog.WithFields(log.Fields{
 		"serviceid":  serviceID,
 		"instanceid": instanceID,
@@ -189,7 +189,7 @@ func (a *HostAgent) RestartContainer(cancel <-chan struct{}, serviceID string, i
 
 	if !ctr.IsRunning() {
 		// container has stopped, so we will pull when the container starts
-		// again.  The event monitor should catch this.
+		// again; the event monitor will handle the stopped container
 		logger.Debug("Container stopped")
 		return nil
 	}
@@ -212,7 +212,10 @@ func (a *HostAgent) RestartContainer(cancel <-chan struct{}, serviceID string, i
 			break
 		}
 
-		// set the container to stop
+		// set the container to stop; ctr.Stop() stops the container by
+		// container id and not name, so if the container was stopped or
+		// deleted before the pull is successful, then this will just be a
+		// no-op.
 		if err := ctr.Stop(45 * time.Second); err != nil {
 			logger.WithError(err).Debug("Could not stop container")
 		}

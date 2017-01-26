@@ -40,12 +40,12 @@ type HostStateHandler interface {
 	// StartContainer creates and starts a new container for the given service
 	// instance.  It returns relevant information about the container and a
 	// channel that triggers when the container has stopped.
-	StartContainer(cancel <-chan struct{}, serviceID string, instanceID int) (*ServiceState, <-chan time.Time, error)
+	StartContainer(cancel <-chan interface{}, serviceID string, instanceID int) (*ServiceState, <-chan time.Time, error)
 
 	// RestartContainer asynchronously prepulls the latest image before
 	// stopping the container.  It only returns an error if there is a problem
 	// with docker and not if the container is not running or doesn't exist.
-	RestartContainer(cancel <-chan struct{}, serviceID string, instanceID int) error
+	RestartContainer(cancel <-chan interface{}, serviceID string, instanceID int) error
 
 	// ResumeContainer resumes a paused container.  Returns nil if the
 	// container has stopped or if it doesn't exist.
@@ -62,8 +62,9 @@ type HostStateListener struct {
 	handler HostStateHandler
 	conn    client.Connection
 
-	active  *sync.WaitGroup
-	passive map[string]struct {
+	shutdown chan interface{}
+	active   *sync.WaitGroup
+	passive  map[string]struct {
 		s  *ServiceState
 		ch <-chan time.Time
 	}
@@ -73,9 +74,10 @@ type HostStateListener struct {
 // NewHostStateListener instantiates a new host state listener
 func NewHostStateListener(hostid string, handler HostStateHandler) *HostStateListener {
 	return &HostStateListener{
-		hostid:  hostid,
-		handler: handler,
-		active:  &sync.WaitGroup{},
+		hostid:   hostid,
+		handler:  handler,
+		shutdown: make(chan interface{}),
+		active:   &sync.WaitGroup{},
 		passive: make(map[string]struct {
 			s  *ServiceState
 			ch <-chan time.Time
@@ -93,6 +95,7 @@ func (l *HostStateListener) Listen(shutdown <-chan struct{}, conn client.Connect
 // Shutdown implements zzk.Listener.  It cleans up orphaned nodes as it
 // prepares the listener for shutdown.
 func (l *HostStateListener) Shutdown() {
+	close(l.shutdown)
 	l.active.Wait()
 	l.Post(map[string]struct{}{})
 }
@@ -210,7 +213,7 @@ func (l *HostStateListener) Spawn(cancel <-chan struct{}, stateid string) {
 		case service.SVCRun:
 			if exited == nil {
 				// container is not running, start it
-				ssdat, exited, err = l.handler.StartContainer(cancel, serviceid, instanceid)
+				ssdat, exited, err = l.handler.StartContainer(l.shutdown, serviceid, instanceid)
 				if err != nil {
 					logger.WithError(err).Error("Could not start container, exiting")
 					l.terminate(req, exited)
@@ -244,7 +247,7 @@ func (l *HostStateListener) Spawn(cancel <-chan struct{}, stateid string) {
 				logger.Debug("Resumed paused container")
 			}
 		case service.SVCRestart:
-			if err := l.handler.RestartContainer(cancel, serviceid, instanceid); err != nil {
+			if err := l.handler.RestartContainer(l.shutdown, serviceid, instanceid); err != nil {
 				logger.WithError(err).Error("Could not restart container, exiting")
 				l.terminate(req, exited)
 				return
