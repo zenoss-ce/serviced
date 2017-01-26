@@ -514,9 +514,10 @@ func (a *HostAgent) createContainerConfig(tenantID string, svc *service.Service,
 	cfg.ExposedPorts = make(map[dockerclient.Port]struct{})
 	hcfg.PortBindings = make(map[dockerclient.Port][]dockerclient.PortBinding)
 	state := &zkservice.ServiceState{
-		ImageUUID: imageUUID,
-		Paused:    false,
-		HostIP:    a.ipaddress,
+		ImageUUID:      imageUUID,
+		Paused:         false,
+		PendingRestart: false,
+		HostIP:         a.ipaddress,
 	}
 
 	var assignedIP string

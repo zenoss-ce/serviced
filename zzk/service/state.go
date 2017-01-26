@@ -51,18 +51,19 @@ var ErrInvalidStateID = errors.New("invalid state id")
 
 // ServiceState provides information of a service state
 type ServiceState struct {
-	ContainerID string
-	ImageUUID   string
-	Paused      bool
-	PrivateIP   string
-	HostIP      string
-	AssignedIP  string
-	Static      bool
-	Imports     []ImportBinding
-	Exports     []ExportBinding
-	Started     time.Time
-	Terminated  time.Time
-	version     interface{}
+	ContainerID    string
+	ImageUUID      string
+	Paused         bool
+	PendingRestart bool
+	PrivateIP      string
+	HostIP         string
+	AssignedIP     string
+	Static         bool
+	Imports        []ImportBinding
+	Exports        []ExportBinding
+	Started        time.Time
+	Terminated     time.Time
+	version        interface{}
 }
 
 // Version implements client.Node

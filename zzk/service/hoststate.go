@@ -252,12 +252,13 @@ func (l *HostStateListener) Spawn(cancel <-chan struct{}, stateid string) {
 				l.terminate(req, exited)
 				return
 			}
+			ssdat.PendingRestart = true
 			if err := UpdateState(l.conn, req, func(s *State) bool {
+				s.ServiceState = ssdat
 				if s.DesiredState == service.SVCRestart {
 					s.DesiredState = service.SVCRun
-					return true
 				}
-				return false
+				return true
 			}); err != nil {
 				logger.WithError(err).Error("Could not update desired state, detaching from container")
 				l.saveThread(stateid, ssdat, exited)
