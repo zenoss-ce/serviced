@@ -247,24 +247,39 @@ func (l *HostStateListener) Spawn(cancel <-chan struct{}, stateid string) {
 				logger.Debug("Resumed paused container")
 			}
 		case service.SVCRestart:
-			if err := l.handler.RestartContainer(l.shutdown, serviceid, instanceid); err != nil {
-				logger.WithError(err).Error("Could not restart container, exiting")
-				l.terminate(req, exited)
-				return
-			}
-			ssdat.PendingRestart = true
-			if err := UpdateState(l.conn, req, func(s *State) bool {
-				s.ServiceState = ssdat
-				if s.DesiredState == service.SVCRestart {
-					s.DesiredState = service.SVCRun
+			if ssdat.Restarted.Before(ssdat.Started) {
+				if err := l.handler.RestartContainer(l.shutdown, serviceid, instanceid); err != nil {
+					logger.WithError(err).Error("Could not restart container, exiting")
+					l.terminate(req, exited)
+					return
 				}
-				return true
-			}); err != nil {
-				logger.WithError(err).Error("Could not update desired state, detaching from container")
-				l.saveThread(stateid, ssdat, exited)
-				return
+				ssdat.Restarted = time.Now()
+				if err := UpdateState(l.conn, req, func(s *State) bool {
+					s.ServiceState = *ssdat
+					if s.DesiredState == service.SVCRestart {
+						s.DesiredState = service.SVCRun
+					}
+					return true
+				}); err != nil {
+					logger.WithError(err).Error("Could not update container state, detaching from container")
+					l.saveThread(stateid, ssdat, exited)
+					return
+				}
+				logger.Debug("Initiating container restart")
+			} else {
+				if err := UpdateState(l.conn, req, func(s *State) bool {
+					if s.DesiredState == service.SVCRestart {
+						s.DesiredState = service.SVCRun
+						return false
+					}
+					return true
+				}); err != nil {
+					logger.WithError(err).Error("Could not update desired state, detaching from container")
+					l.saveThread(stateid, ssdat, exited)
+					return
+				}
+				logger.Debug("Container restart already initiated")
 			}
-			logger.Debug("Initiating container restart")
 		case service.SVCPause:
 			if exited != nil && !ssdat.Paused {
 				// container is not paused, so pause the container
