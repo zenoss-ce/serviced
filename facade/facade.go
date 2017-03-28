@@ -38,6 +38,7 @@ type MetricsClient interface {
 }
 // instantiate the package logger
 var plog = logging.PackageLogger()
+var alog = logging.AuditLogger()
 
 // assert interface
 var _ FacadeInterface = &Facade{}

@@ -12,6 +12,9 @@ import (
 const (
 	prefix       = "github.com/control-center/serviced/"
 	vendorprefix = prefix + "vendor/"
+	audit        = "auditlog"
+	//auditlogloc  = "/etc/default/zenoss_audit.log"
+	auditlogloc  = "/tmp/zenoss_audit.log"
 )
 
 // ContextHook is a hook to provide context in log messages

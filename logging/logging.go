@@ -5,6 +5,9 @@ import (
 	"strings"
 
 	"github.com/zenoss/logri"
+	"fmt"
+	"github.com/Sirupsen/logrus"
+	"os"
 )
 
 func init() {
@@ -24,7 +27,7 @@ func pkgFromFunc(funcname string) string {
 }
 
 // PackageLogger returns a logger for a given package.
-func PackageLogger() *logri.Logger {
+func PackageLogger_old() *logri.Logger {
 	pc := make([]uintptr, 3, 3)
 	count := runtime.Callers(2, pc)
 	for i := 0; i < count; i++ {
@@ -35,4 +38,30 @@ func PackageLogger() *logri.Logger {
 		}
 	}
 	return logri.GetLogger("")
+}
+
+func PackageLogger() *logri.Logger {
+	pc := make([]uintptr, 3, 3)
+	_ = runtime.Callers(2, pc)
+	frames := runtime.CallersFrames(pc)
+	for frame, more := frames.Next(); more; frame, more = frames.Next() {
+		name := frame.Func.Name()
+		if strings.Contains(name, prefix) {
+			return logri.GetLogger(pkgFromFunc(name))
+		}
+	}
+	return logri.GetLogger("")
+}
+
+func AuditLogger() *logri.Logger {
+	al := logri.GetLogger(audit)
+	al.SetLevel(logrus.InfoLevel, false)
+	fileopt := map[string]string {"file": auditlogloc}
+	w, err := logri.GetOutputWriter(logri.FileOutput, fileopt)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error getting output writer for %s: %s\n", auditlogloc, err)
+		return nil
+	}
+	al.SetOutput(w)
+	return al
 }
