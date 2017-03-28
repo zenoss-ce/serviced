@@ -1752,6 +1752,10 @@ func (f *Facade) WaitService(ctx datastore.Context, dstate service.DesiredState,
 }
 
 func (f *Facade) ListTenants(ctx datastore.Context) ([]string, error) {
+	alog.WithFields(
+		log.Fields{
+			"context": ctx,
+		}).Info("ListTenants()")
 	defer ctx.Metrics().Stop(ctx.Metrics().Start("Facade.ListTenants"))
 	var tenantIDs []string
 	tenants, err := f.serviceStore.GetServiceDetailsByParentID(ctx, "", 0)
@@ -1776,17 +1780,35 @@ func (f *Facade) WaitSingleService(svc *service.Service, dstate service.DesiredS
 }
 
 func (f *Facade) StartService(ctx datastore.Context, request dao.ScheduleServiceRequest) (int, error) {
+	alog.WithFields(
+		log.Fields{
+			"context": ctx,
+			"request": request,
+			"audit": "AUDIT",
+		}).Info("StartService()")
 	defer ctx.Metrics().Stop(ctx.Metrics().Start("Facade.StartService"))
 	return f.ScheduleServices(ctx, request.ServiceIDs, request.AutoLaunch, request.Synchronous, service.SVCRun, false)
 }
 
 func (f *Facade) RestartService(ctx datastore.Context, request dao.ScheduleServiceRequest) (int, error) {
+	alog.WithFields(
+		log.Fields{
+			"context": ctx,
+			"request": request,
+			"audit": "AUDIT",
+		}).Info("RestartService()")
 	defer ctx.Metrics().Stop(ctx.Metrics().Start("Facade.RestartService"))
 	return f.ScheduleServices(ctx, request.ServiceIDs, request.AutoLaunch, request.Synchronous, service.SVCRestart, false)
 }
 
 // RebalanceService does a hard restart:  All services are stopped, and then all services are started again
 func (f *Facade) RebalanceService(ctx datastore.Context, request dao.ScheduleServiceRequest) (int, error) {
+	alog.WithFields(
+		log.Fields{
+			"context": ctx,
+			"request": request,
+			"audit": "AUDIT",
+		}).Info("RebalanceService()")
 	defer ctx.Metrics().Stop(ctx.Metrics().Start("Facade.RebalanceService"))
 
 	forceRestart := func() (int, error) {
@@ -1816,22 +1838,46 @@ func (f *Facade) RebalanceService(ctx datastore.Context, request dao.ScheduleSer
 }
 
 func (f *Facade) PauseService(ctx datastore.Context, request dao.ScheduleServiceRequest) (int, error) {
+	alog.WithFields(
+		log.Fields{
+			"context": ctx,
+			"request": request,
+			"audit": "AUDIT",
+		}).Info("PauseService()")
 	defer ctx.Metrics().Stop(ctx.Metrics().Start("Facade.PauseService"))
 	return f.ScheduleServices(ctx, request.ServiceIDs, request.AutoLaunch, request.Synchronous, service.SVCPause, false)
 }
 
 func (f *Facade) StopService(ctx datastore.Context, request dao.ScheduleServiceRequest) (int, error) {
+	alog.WithFields(
+		log.Fields{
+			"context": ctx,
+			"request": request,
+			"audit": "AUDIT",
+		}).Info("StopService()")
 	defer ctx.Metrics().Stop(ctx.Metrics().Start("Facade.StopService"))
 	return f.ScheduleServices(ctx, request.ServiceIDs, request.AutoLaunch, request.Synchronous, service.SVCStop, false)
 }
 
 func (f *Facade) EmergencyStopService(ctx datastore.Context, request dao.ScheduleServiceRequest) (int, error) {
+	alog.WithFields(
+		log.Fields{
+			"context": ctx,
+			"request": request,
+			"audit": "AUDIT",
+		}).Info("EmergencyStopService()")
 	defer ctx.Metrics().Stop(ctx.Metrics().Start("Facade.EmergencyStopService"))
 	return f.ScheduleServices(ctx, request.ServiceIDs, request.AutoLaunch, request.Synchronous, service.SVCStop, true)
 }
 
 // ClearEmergencyStopFlag sets EmergencyStop to false for all services on the tenant that have it set to true
 func (f *Facade) ClearEmergencyStopFlag(ctx datastore.Context, serviceID string) (int, error) {
+	alog.WithFields(
+		log.Fields{
+			"context": ctx,
+			"serviceid": serviceID,
+			"audit": "AUDIT",
+		}).Info("ClearEmergencyStopFlag()")
 	defer ctx.Metrics().Stop(ctx.Metrics().Start("Facade.ClearEmergencyStopFlag"))
 	tenantID, err := f.GetTenantID(ctx, serviceID)
 	if err != nil {

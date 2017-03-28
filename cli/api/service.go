@@ -35,7 +35,9 @@ import (
 
 const ()
 
-var ()
+var (
+
+)
 
 // ServiceConfig is the deserialized object from the command-line
 type ServiceConfig struct {

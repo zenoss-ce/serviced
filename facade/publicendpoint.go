@@ -23,6 +23,7 @@ import (
 	"github.com/control-center/serviced/domain/service"
 	"github.com/control-center/serviced/domain/servicedefinition"
 	"github.com/zenoss/glog"
+	"github.com/Sirupsen/logrus"
 )
 
 var vhostNameRegex = regexp.MustCompile("^(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9]).)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9-]*[A-Za-z0-9])$")
@@ -385,6 +386,10 @@ func (f *Facade) EnablePublicEndpointVHost(ctx datastore.Context, serviceid, end
 
 // GetAllPublicEndpoints returns all the public endpoints in the system
 func (f *Facade) GetAllPublicEndpoints(ctx datastore.Context) ([]service.PublicEndpoint, error) {
+	alog.WithFields(logrus.Fields {
+		"context": ctx,
+		"audit": "AUDIT",
+	}).Info("GetAllPublicEndpoints")
 	defer ctx.Metrics().Stop(ctx.Metrics().Start("GetAllPublicEndpoints"))
 	return f.serviceStore.GetAllPublicEndpoints(ctx)
 }

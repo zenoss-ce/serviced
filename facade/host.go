@@ -26,6 +26,7 @@ import (
 	"github.com/control-center/serviced/domain/service"
 	"github.com/zenoss/glog"
 	"github.com/control-center/serviced/utils"
+	"github.com/Sirupsen/logrus"
 )
 
 const (
@@ -48,6 +49,12 @@ var (
 // AddHost registers a host with serviced. Returns the host's private key.
 // Returns an error if host already exists or if the host's IP is a virtual IP.
 func (f *Facade) AddHost(ctx datastore.Context, entity *host.Host) ([]byte, error) {
+	alog.WithFields(
+		logrus.Fields{
+			"context": ctx,
+			"entity": entity,
+			"audit": "AUDIT",
+		}).Info("PauseService()")
 	defer ctx.Metrics().Stop(ctx.Metrics().Start("Facade.AddHost"))
 	glog.V(2).Infof("Facade.AddHost: %v", entity)
 	if err := f.DFSLock(ctx).LockWithTimeout("add host", userLockTimeout); err != nil {
