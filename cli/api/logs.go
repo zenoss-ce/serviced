@@ -29,13 +29,35 @@ import (
 	"strings"
 	"time"
 
+	"os/user"
+
 	"github.com/Sirupsen/logrus"
 	"github.com/control-center/serviced/config"
+	"github.com/control-center/serviced/domain/audit"
 	"github.com/control-center/serviced/domain/host"
 	"github.com/control-center/serviced/domain/service"
 	"github.com/control-center/serviced/volume"
 	elastigocore "github.com/zenoss/elastigo/core"
 )
+
+func (a *api) AuditLog(message string) {
+	client, err := a.connectDAO()
+	if err != nil {
+		return
+	}
+
+	var cuser string
+	cuserobj, err := user.Current()
+	if err != nil {
+		cuser = "CLI"
+	}
+	cuser = cuserobj.Name
+	client.AuditLog(audit.AuditLogRequest{
+		User:    cuser,
+		Origin:  audit.CLI,
+		Message: message,
+	})
+}
 
 // This interface is primarily provided for unit-testing ExportLogs().
 // Admittedly a very leaky abstraction around only a handful of elastigo calls.

@@ -790,6 +790,9 @@ func (c *ServicedCli) cmdServiceStatus(ctx *cli.Context) {
 
 // serviced service list [--verbose, -v] [SERVICEID]
 func (c *ServicedCli) cmdServiceList(ctx *cli.Context) {
+	c.driver.AuditLog("Serviced Service List - log via c.driver.AuditLog()")
+	// the following messages log to the terminal from which the command is executed.
+	log.Info("This is a regular info log message from cmdServiceList()")
 	if len(ctx.Args()) > 0 {
 		svc, _, err := c.searchForService(ctx.Args().First())
 		if err != nil {
@@ -1161,6 +1164,7 @@ func (c *ServicedCli) cmdServiceStop(ctx *cli.Context) {
 	for i, svcID := range args {
 		svc, _, err := c.searchForService(svcID)
 		if err != nil {
+
 			fmt.Fprintln(os.Stderr, err)
 			return
 		}

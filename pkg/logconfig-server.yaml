@@ -1,2 +1,8 @@
 - logger: '*'
   level: info
+- logger: auditlog
+  level: info
+  out:
+  - type: file
+    options:
+      file: cc_server_audit.log

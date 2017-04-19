@@ -20,14 +20,14 @@ package utils
 
 import (
 	"fmt"
+	"github.com/control-center/serviced/config"
 	"os"
 	"os/user"
 	"path"
 	"path/filepath"
 	"runtime"
 	"strings"
-	"github.com/control-center/serviced/config"
-	"github.com/zenoss/glog"
+	//"github.com/zenoss/glog"
 )
 
 //ServiceDHome gets the home location of serviced by looking at the enviornment
@@ -68,17 +68,8 @@ func TempDir(p string) string {
 		tmp = path.Join(os.TempDir(), fmt.Sprintf("serviced-%s", user.Username), p)
 	} else {
 		tmp = path.Join(os.TempDir(), fmt.Sprintf("serviced"), p)
-		glog.Warningf("Defaulting home to %s", tmp)
+		//glog.Warningf("Defaulting home to %s", tmp)
 	}
 
 	return tmp
-}
-
-// ServicedLogDir gets the serviced log directory
-func ServicedLogDir() string {
-        if config.GetOptions().LogPath != "" {
-		return config.GetOptions().LogPath
-	} else{
-		return os.Getenv("SERVICED_LOG_PATH")
-	}
 }

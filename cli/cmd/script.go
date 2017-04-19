@@ -26,8 +26,8 @@ import (
 	"github.com/codegangsta/cli"
 
 	"github.com/control-center/serviced/domain/service"
+	"github.com/control-center/serviced/logging"
 	"github.com/control-center/serviced/script"
-	"github.com/control-center/serviced/utils"
 )
 
 // Initializer for serviced script
@@ -104,7 +104,7 @@ func (c *ServicedCli) cmdScriptRun(ctx *cli.Context) {
 		os.Setenv("IS_WITHIN_UNIX_SCRIPT", "TRUE") // prevent inception problem
 
 		// DO NOT EXIT ON ANY ERRORS - continue without logging
-		logdir := utils.ServicedLogDir()
+		logdir := logging.ServicedLogDir()
 		if userrec, err := user.Current(); err != nil {
 			fmt.Fprintf(os.Stderr, "Unable to retrieve userid to log output: %s", err)
 		} else {

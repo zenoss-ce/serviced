@@ -32,6 +32,8 @@ import (
 
 // API is the intermediary between the command-line interface and the dao layer
 type API interface {
+	// Audit Log
+	AuditLog(message string)
 
 	// Server
 	StartServer() error

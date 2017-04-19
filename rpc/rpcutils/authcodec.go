@@ -46,11 +46,14 @@ var (
 		"ControlCenterAgent.ReportInstanceDead":  struct{}{},
 		"ControlCenterAgent.SendLogMessage":      struct{}{},
 	}
+
 	endian = binary.BigEndian
 
 	ErrNoAdmin = errors.New("Delegate does not have admin access")
 
 	log = logging.PackageLogger()
+	//_ rpc.ClientCodec = AuthClientCodec{}
+	//_ rpc.ServerCodec = AuthServerCodec{}
 )
 
 // Checks the RPC method name to see if authentication is required.
@@ -71,6 +74,7 @@ func requiresAdmin(callName string) bool {
 	_, ok := NonAdminRequiredCalls[callName]
 	return !ok
 }
+
 
 // We nead a ReadWriteCloser that we can pass to the underlying codec and use
 //  To buffer requests and responses from the actual connection
@@ -104,7 +108,8 @@ type AuthServerCodec struct {
 }
 
 func NewDefaultAuthServerCodec(conn io.ReadWriteCloser) rpc.ServerCodec {
-	return NewAuthServerCodec(conn, jsonrpc.NewServerCodec, &auth.RPCHeaderHandler{})
+	return NewAuthServerCodec(conn, NewDefaultLogServerCodec, &auth.RPCHeaderHandler{})
+	//return NewAuthServerCodec(conn, jsonrpc.NewServerCodec, &auth.RPCHeaderHandler{})
 }
 
 func NewAuthServerCodec(conn io.ReadWriteCloser, createCodec ServerCodecCreator, parser auth.RPCHeaderParser) rpc.ServerCodec {
@@ -123,6 +128,7 @@ func NewAuthServerCodec(conn io.ReadWriteCloser, createCodec ServerCodecCreator,
 //  Finally, it validates the identity if necessary.
 func (a *AuthServerCodec) ReadRequestHeader(r *rpc.Request) error {
 
+	alog.WithField("r.ServiceMethod", r.ServiceMethod).WithField("r.Seq", r.Seq).WithField("function", "ReadRequestHeader").Info("AuthServerCodec method call.")
 	// There is no need for synchronization here, since go's RPC server
 	//  ensures that requests are read one-at-a-time
 

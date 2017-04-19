@@ -201,6 +201,7 @@ func (c *ServicedCli) cmdInit(ctx *cli.Context) error {
 	if err := setLogging(&options, ctx, c.logControl); err != nil {
 		fmt.Fprintf(os.Stderr, "Unable to set logging options: %s\n", err)
 	}
+	logging.AuditLogger().Info("Logging initialized")
 
 	// TODO: Since isvcs options are only used by server (master/agent), these settings
 	//       should be moved to api.ValidateServerOptions
@@ -374,6 +375,7 @@ func setLogging(options *config.Options, ctx *cli.Context, logControl logging.Lo
 	// start watchers, etc.
 	var errors []error
 
+	fmt.Fprintf(os.Stderr, "#!#!#!# Applying log config from %s\n", options.LogConfigFilename)
 	if err := logControl.ApplyConfigFromFile(options.LogConfigFilename); err != nil {
 		errors = append(errors, err)
 	}

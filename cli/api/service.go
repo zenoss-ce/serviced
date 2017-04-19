@@ -31,6 +31,7 @@ import (
 
 	"github.com/control-center/serviced/domain/host"
 	"github.com/pivotal-golang/bytefmt"
+	"github.com/control-center/serviced/domain/audit"
 )
 
 const ()
@@ -118,7 +119,12 @@ func (a *api) GetServiceStatus(serviceID string) (map[string]map[string]interfac
 	rowmap := make(map[string]map[string]interface{})
 	for _, svc := range svcs {
 		var status []service.Instance
-		if err := client.GetServiceStatus(svc.ID, &status); err != nil {
+		req := audit.AuditLogRequest{
+			Message: "Calling GetServiceStatus from API",
+			Origin: audit.CLI,
+			User: "me",
+		}
+		if err := client.GetServiceStatus(req, svc.ID, &status); err != nil {
 			return nil, err
 		}
 
@@ -341,6 +347,7 @@ func (a *api) StartService(config SchedulerConfig) (int, error) {
 	}
 
 	var affected int
+	a.AuditLog("CLI - StartService()")
 	err = client.StartService(dao.ScheduleServiceRequest{config.ServiceIDs, config.AutoLaunch, config.Synchronous}, &affected)
 	return affected, err
 }
@@ -371,6 +378,7 @@ func (a *api) RebalanceService(config SchedulerConfig) (int, error) {
 
 // StopService stops a service
 func (a *api) StopService(config SchedulerConfig) (int, error) {
+	a.AuditLog("CLI - StopService()")
 	client, err := a.connectDAO()
 	if err != nil {
 		return 0, err

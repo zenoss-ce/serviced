@@ -392,9 +392,9 @@ func (d *daemon) run() (err error) {
 }
 
 func (d *daemon) initContext() datastore.Context {
-	log.Debug("Acquiring application context from Elastic")
+	log.Info("Acquiring application context from Elastic")
 	datastore.Register(d.dsDriver)
-	ctx := datastore.Get()
+	ctx := datastore.GetNew()
 	if ctx == nil {
 		log.Fatal("Unable to acquire application context from Elastic")
 	}

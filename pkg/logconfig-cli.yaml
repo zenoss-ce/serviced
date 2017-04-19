@@ -1,2 +1,4 @@
 - logger: '*'
   level: warn
+- logger: auditlog
+  level: info
