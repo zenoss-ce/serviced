@@ -42,6 +42,8 @@ import (
 	zkdocker "github.com/control-center/serviced/zzk/docker"
 	"github.com/zenoss/elastigo/api"
 	"github.com/zenoss/glog"
+	"github.com/control-center/serviced/logging"
+	"github.com/control-center/serviced/domain/audit"
 )
 
 const (
@@ -80,6 +82,12 @@ func childFinder(ctx datastore.Context, f *facade.Facade) service.FindChildServi
 		}
 		return *svc, nil
 	}
+}
+
+func (this *ControlPlaneDao) AuditLog(req audit.AuditLogRequest) error {
+	l := logging.PackageLogger()
+	l.Errorf("Not really an error. ControlPlaneDao.AuditLog(%s)", req)
+	return this.facade.AuditLog(req)
 }
 
 func (this *ControlPlaneDao) Action(request dao.AttachRequest, unused *int) error {

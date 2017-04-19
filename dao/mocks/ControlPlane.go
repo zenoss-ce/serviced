@@ -5,7 +5,10 @@ import "github.com/stretchr/testify/mock"
 
 import "github.com/control-center/serviced/domain/addressassignment"
 import "github.com/control-center/serviced/domain/service"
-import "github.com/control-center/serviced/metrics"
+import (
+	"github.com/control-center/serviced/metrics"
+	"github.com/control-center/serviced/domain/audit"
+)
 
 type ControlPlane struct {
 	mock.Mock
@@ -203,7 +206,7 @@ func (_m *ControlPlane) WaitService(request dao.WaitServiceRequest, unused *int)
 
 	return r0
 }
-func (_m *ControlPlane) GetServiceStatus(serviceID string, status *[]service.Instance) error {
+func (_m *ControlPlane) GetServiceStatus(req audit.AuditLogRequest, serviceID string, status *[]service.Instance) error {
 	ret := _m.Called(serviceID, status)
 
 	var r0 error

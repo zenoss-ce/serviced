@@ -25,6 +25,9 @@ import (
 	"github.com/control-center/serviced/zzk"
 	zks "github.com/control-center/serviced/zzk/service"
 	"github.com/zenoss/glog"
+	"github.com/control-center/serviced/logging"
+	"github.com/control-center/serviced/domain/audit"
+	"github.com/Sirupsen/logrus"
 )
 
 func (this *ControlPlaneDao) getPoolBasedConnection(serviceID string) (client.Connection, error) {
@@ -50,7 +53,14 @@ func (this *ControlPlaneDao) StopRunningInstance(request dao.HostServiceRequest,
 	return this.facade.StopServiceInstance(datastore.Get(), serviceID, instanceID)
 }
 
-func (this *ControlPlaneDao) GetServiceStatus(serviceID string, status *[]service.Instance) error {
+func (this *ControlPlaneDao) GetServiceStatus(req audit.AuditLogRequest, serviceID string, status *[]service.Instance) error {
+	al := logging.AuditLogger()
+	al.WithFields(logrus.Fields{
+		"origin": req.Origin,
+		"user": req.User,
+		"message": req.Message,
+		"req": req.Intent,
+	}).Info("Audit log from DAO layer (elasticsearch): ControlPlaneDao.GetServiceStatus()")
 	since := time.Now().Add(-time.Hour)
 	inst, err := this.facade.GetServiceInstances(datastore.Get(), since, serviceID)
 	if err != nil {

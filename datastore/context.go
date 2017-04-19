@@ -15,6 +15,9 @@ package datastore
 
 import (
 	"github.com/control-center/serviced/metrics"
+	"os/user"
+	"fmt"
+	"os"
 )
 
 // Context is the context of the application or request being made
@@ -24,6 +27,12 @@ type Context interface {
 
 	// Get the Metrics object from the context
 	Metrics() *metrics.Metrics
+	GetUser() string
+	SetUser(string)
+	GetIntention() string
+	SetIntention(string)
+	GetOrigin() string
+	SetOrigin(string)
 }
 
 var savedDriver Driver
@@ -46,16 +55,26 @@ func GetNew() Context {
 	return newCtx(savedDriver)
 }
 
+func GetNewPlus(user string, origin string) {
+	ctx = newCtx(savedDriver)
+	ctx.SetUser(user)
+	ctx.SetOrigin(origin)
+}
+
 var ctx Context
 
 //new Creates a new context with a Driver to a datastore
 func newCtx(driver Driver) Context {
-	return &context{driver, metrics.NewMetrics()}
+	return &context{driver, metrics.NewMetrics(), "CONTEXT INTENTION", "Internal",""}
 }
 
 type context struct {
 	driver  Driver
 	metrics *metrics.Metrics
+	intention string
+	origin string
+	user string
+	//origin dao.OriginType
 }
 
 func (c *context) Connection() (Connection, error) {
@@ -64,4 +83,36 @@ func (c *context) Connection() (Connection, error) {
 
 func (c *context) Metrics() *metrics.Metrics {
 	return c.metrics
+}
+
+func (c *context) SetUser(user string) {
+	c.user = user
+}
+
+func (c *context) GetUser() string {
+	if c.user != "" {
+		return c.user
+	}
+	cu, err := user.Current()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "error getting current user: %s\n", err)
+		return "UNKNOWN_USER"
+	}
+	return cu.Name
+}
+
+func (c * context) SetIntention(intention string) {
+	c.intention = intention
+}
+
+func (c * context) GetIntention() string {
+	return c.intention
+}
+
+func (c * context) SetOrigin(origin string) {
+	c.origin = origin
+}
+
+func (c * context) GetOrigin() string {
+	return c.origin
 }

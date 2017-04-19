@@ -30,6 +30,7 @@ import (
 	"github.com/control-center/serviced/domain/addressassignment"
 	"github.com/control-center/serviced/domain/service"
 	"github.com/control-center/serviced/metrics"
+	"github.com/control-center/serviced/domain/audit"
 )
 
 // A generic ControlPlane error
@@ -41,6 +42,20 @@ type ControlPlaneError struct {
 func (s ControlPlaneError) Error() string {
 	return s.Msg
 }
+
+//type OriginType string
+//const (
+//	UI OriginType = "UI"
+//	CLI = "CLI"
+//	Internal = "Internal Call"
+//)
+
+//type DaoAuditLogRequest struct {
+//	User string
+//	Message string
+//	Origin OriginType
+//	Intent string
+//}
 
 // An request for a control center object.
 type EntityRequest interface{}
@@ -130,6 +145,7 @@ type MetricRequest struct {
 
 // The ControlPlane interface is the API for a serviced master.
 type ControlPlane interface {
+	AuditLog(audit.AuditLogRequest) error
 
 	//---------------------------------------------------------------------------
 	// Service CRUD
@@ -186,7 +202,7 @@ type ControlPlane interface {
 	WaitService(request WaitServiceRequest, unused *int) error
 
 	// Computes the status of the service based on its service instances
-	GetServiceStatus(serviceID string, status *[]service.Instance) error
+	GetServiceStatus(req audit.AuditLogRequest, serviceID string, status *[]service.Instance) error
 
 	// Get logs for the given app
 	GetServiceLogs(serviceId string, logs *string) error

@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/control-center/serviced/domain/applicationendpoint"
+	"github.com/control-center/serviced/domain/audit"
 	"github.com/control-center/serviced/domain/host"
 	"github.com/control-center/serviced/domain/pool"
 	"github.com/control-center/serviced/domain/service"
@@ -236,4 +237,10 @@ type ClientInterface interface {
 
 	// Disable internal metrics collection
 	DebugDisableMetrics() (string, error)
+
+	//--------------------------------------------------------------------------
+	// Audit Logging Functions
+
+	// Send message to audit log
+	AuditLog(req audit.AuditLogRequest) error
 }

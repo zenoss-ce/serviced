@@ -35,6 +35,7 @@ import (
 	"github.com/control-center/serviced/dao"
 	"github.com/control-center/serviced/domain/addressassignment"
 	"github.com/control-center/serviced/domain/applicationendpoint"
+	"github.com/control-center/serviced/domain/audit"
 	"github.com/control-center/serviced/domain/service"
 	"github.com/control-center/serviced/metrics"
 	"github.com/control-center/serviced/rpc/rpcutils"
@@ -59,6 +60,11 @@ func NewControlClient(addr string) (s *ControlClient, err error) {
 	s.addr = addr
 	s.rpcClient = client
 	return s, nil
+}
+
+func (s *ControlClient) AuditLog(request audit.AuditLogRequest) error {
+	var unused *int
+	return s.rpcClient.Call("ControlCenter.AuditLog", request, unused, 0)
 }
 
 // Return the matching hosts.
@@ -158,7 +164,7 @@ func (s *ControlClient) WaitService(request dao.WaitServiceRequest, _ *int) (err
 	return s.rpcClient.Call("ControlCenter.WaitService", request, nil, 0)
 }
 
-func (s *ControlClient) GetServiceStatus(serviceID string, statusmap *[]service.Instance) (err error) {
+func (s *ControlClient) GetServiceStatus(req audit.AuditLogRequest, serviceID string, statusmap *[]service.Instance) (err error) {
 	return s.rpcClient.Call("ControlCenter.GetServiceStatus", serviceID, statusmap, 0)
 }
 

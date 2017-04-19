@@ -22,6 +22,7 @@ import (
 	"github.com/control-center/serviced/health"
 
 	"github.com/control-center/serviced/domain/addressassignment"
+	"github.com/control-center/serviced/domain/audit"
 	"github.com/control-center/serviced/domain/host"
 	"github.com/control-center/serviced/domain/pool"
 	"github.com/control-center/serviced/domain/service"
@@ -33,6 +34,7 @@ import (
 
 // The FacadeInterface is the API for a Facade
 type FacadeInterface interface {
+	AuditLog(request audit.AuditLogRequest) error
 	AddService(ctx datastore.Context, svc service.Service) error
 
 	GetService(ctx datastore.Context, id string) (*service.Service, error)

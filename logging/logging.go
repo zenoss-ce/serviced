@@ -5,9 +5,6 @@ import (
 	"strings"
 
 	"github.com/zenoss/logri"
-	"fmt"
-	"github.com/Sirupsen/logrus"
-	"os"
 )
 
 func init() {
@@ -27,19 +24,6 @@ func pkgFromFunc(funcname string) string {
 }
 
 // PackageLogger returns a logger for a given package.
-func PackageLogger_old() *logri.Logger {
-	pc := make([]uintptr, 3, 3)
-	count := runtime.Callers(2, pc)
-	for i := 0; i < count; i++ {
-		fu := runtime.FuncForPC(pc[i])
-		name := fu.Name()
-		if strings.Contains(name, prefix) {
-			return logri.GetLogger(pkgFromFunc(name))
-		}
-	}
-	return logri.GetLogger("")
-}
-
 func PackageLogger() *logri.Logger {
 	pc := make([]uintptr, 3, 3)
 	_ = runtime.Callers(2, pc)
@@ -55,13 +39,19 @@ func PackageLogger() *logri.Logger {
 
 func AuditLogger() *logri.Logger {
 	al := logri.GetLogger(audit)
-	al.SetLevel(logrus.InfoLevel, false)
-	fileopt := map[string]string {"file": auditlogloc}
-	w, err := logri.GetOutputWriter(logri.FileOutput, fileopt)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error getting output writer for %s: %s\n", auditlogloc, err)
-		return nil
-	}
-	al.SetOutput(w)
+	// TODO: if ServicedLogDir() doesn't exist, this won't work - logri doesn't create path.
+	//logfn := path.Join(ServicedLogDir(), auditlogname)
+	//ofd := map[string]string{"file": logfn}
+	//ow, err := logri.GetOutputWriter(logri.FileOutput, ofd)
+	//if err != nil {
+	//	al.WithError(err).Info("Unable to get output writer for audit log.")
+	//	return al
+	//}
+	//al.SetOutput(ow)
 	return al
+}
+
+// ServicedLogDir gets the serviced log directory
+func ServicedLogDir() string {
+	return "/var/log/serviced"
 }
