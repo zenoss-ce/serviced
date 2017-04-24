@@ -6,8 +6,8 @@ import "github.com/stretchr/testify/mock"
 import "github.com/control-center/serviced/domain/addressassignment"
 import "github.com/control-center/serviced/domain/service"
 import (
-	"github.com/control-center/serviced/metrics"
 	"github.com/control-center/serviced/domain/audit"
+	"github.com/control-center/serviced/metrics"
 )
 
 type ControlPlane struct {
@@ -538,6 +538,19 @@ func (_m *ControlPlane) GetBackupEstimate(backupRequest dao.BackupRequest, estim
 	var r0 error
 	if rf, ok := ret.Get(0).(func(dao.BackupRequest, *dao.BackupEstimate) error); ok {
 		r0 = rf(backupRequest, estimate)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+func (_m *ControlPlane) AuditLog(_a0 audit.AuditLogRequest) error {
+	ret := _m.Called(_a0)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(audit.AuditLogRequest) error); ok {
+		r0 = rf(_a0)
 	} else {
 		r0 = ret.Error(0)
 	}

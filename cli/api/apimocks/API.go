@@ -1618,4 +1618,8 @@ func (_m *API) GetBackupEstimate(_a0 string, _a1 []string) (*dao.BackupEstimate,
 	return r0, r1
 }
 
+func (_m *API) AuditLog(_a0 string) {
+	_m.Called(_a0)
+}
+
 var _ api.API = (*API)(nil)

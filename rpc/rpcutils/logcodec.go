@@ -82,7 +82,7 @@ func (l LogServerCodec) WriteResponse(r *rpc.Response, i interface{}) error {
 
 // Implements ServerCodec.Close()
 func (l LogServerCodec) Close() error {
-	alog.WithField("tunction", "Close()").Info("LogServerCodec function called.")
+	alog.WithField("function", "Close()").Info("LogServerCodec function called.")
 	return l.wrappedcodec.Close()
 }
 

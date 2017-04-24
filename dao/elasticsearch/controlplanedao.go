@@ -35,15 +35,15 @@ import (
 
 	"github.com/control-center/serviced/dao"
 	"github.com/control-center/serviced/datastore"
+	"github.com/control-center/serviced/domain/audit"
 	"github.com/control-center/serviced/domain/service"
 	"github.com/control-center/serviced/facade"
+	"github.com/control-center/serviced/logging"
 	"github.com/control-center/serviced/metrics"
 	"github.com/control-center/serviced/zzk"
 	zkdocker "github.com/control-center/serviced/zzk/docker"
 	"github.com/zenoss/elastigo/api"
 	"github.com/zenoss/glog"
-	"github.com/control-center/serviced/logging"
-	"github.com/control-center/serviced/domain/audit"
 )
 
 const (

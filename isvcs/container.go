@@ -124,7 +124,7 @@ type IServiceDefinition struct {
 	PreStart       func(*IService) error              // A function to run before the initial start of the service
 	PostStart      func(*IService) error              // A function to run after the initial start of the service
 	Recover        func(path string) error            // A recovery step if the service fails to start
-	StartupFailed  func()			  	  // A clean up step just before the service is stopped
+	StartupFailed  func()                             // A clean up step just before the service is stopped
 	HostNetwork    bool                               // enables host network in the container
 	Links          []string                           // List of links to other containers in the form of <name>:<alias>
 	StartGroup     uint16                             // Start up group number
@@ -355,9 +355,9 @@ func (svc *IService) create() (*docker.Container, error) {
 	if svc.Volumes != nil && len(svc.Volumes) > 0 {
 		for src, dest := range svc.Volumes {
 			var hostpath string
-                        if src == UseServicedLogDir {
-				hostpath = utils.ServicedLogDir()
-			}else {
+			if src == UseServicedLogDir {
+				hostpath = "/var/log/serviced"
+			} else {
 				hostpath = svc.getResourcePath(src)
 			}
 			log := log.WithFields(logrus.Fields{

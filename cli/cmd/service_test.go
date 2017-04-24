@@ -166,6 +166,9 @@ type ServiceAPITest struct {
 	endpoints []applicationendpoint.EndpointReport
 }
 
+func (t ServiceAPITest) AuditLog(_a0 string) {
+}
+
 func InitServiceAPITest(args ...string) {
 	c := New(DefaultServiceAPITest, utils.TestConfigReader(make(map[string]string)), MockLogControl{})
 	c.exitDisabled = true

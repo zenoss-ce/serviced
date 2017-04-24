@@ -1,6 +1,7 @@
 package mocks
 
 import addressassignment "github.com/control-center/serviced/domain/addressassignment"
+import audit "github.com/control-center/serviced/domain/audit"
 import dao "github.com/control-center/serviced/dao"
 import datastore "github.com/control-center/serviced/datastore"
 import domain "github.com/control-center/serviced/domain"
@@ -1651,13 +1652,13 @@ func (_m *FacadeInterface) GetServiceNamePath(ctx datastore.Context, serviceID s
 	}
 
 	var r1 string
-        if rf, ok := ret.Get(0).(func(datastore.Context, string) string); ok {
-                r1 = rf(ctx, serviceID)
-        } else {
-                if ret.Get(0) != nil {
-                        r1 = ret.Get(0).(string)
-                }
-        }
+	if rf, ok := ret.Get(0).(func(datastore.Context, string) string); ok {
+		r1 = rf(ctx, serviceID)
+	} else {
+		if ret.Get(0) != nil {
+			r1 = ret.Get(0).(string)
+		}
+	}
 
 	var r2 error
 	if rf, ok := ret.Get(1).(func(datastore.Context, string) error); ok {
@@ -1667,4 +1668,19 @@ func (_m *FacadeInterface) GetServiceNamePath(ctx datastore.Context, serviceID s
 	}
 
 	return r0, r1, r2
+}
+
+func (_m *FacadeInterface) AuditLog(_a0 audit.AuditLogRequest) error {
+	ret := _m.Called(_a0)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(audit.AuditLogRequest) error); ok {
+		r0 = rf(_a0)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(error)
+		}
+	}
+
+	return r0
 }

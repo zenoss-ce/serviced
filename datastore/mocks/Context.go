@@ -54,3 +54,51 @@ func (_m *Context) Metrics() *metrics.Metrics {
 	}
 	return r0
 }
+
+func (_m *Context) SetUser(_a0 string) {
+	_m.Called()
+}
+
+func (_m *Context) GetUser() string {
+	ret := _m.Called()
+
+	var r0 string
+	if rf, ok := ret.Get(0).(func() string); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+	return r0
+}
+
+func (_m *Context) SetIntention(_a0 string) {
+	_m.Called()
+}
+
+func (_m *Context) GetIntention() string {
+	ret := _m.Called()
+
+	var r0 string
+	if rf, ok := ret.Get(0).(func() string); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+	return r0
+}
+
+func (_m *Context) SetOrigin(_a0 string) {
+	_m.Called()
+}
+
+func (_m *Context) GetOrigin() string {
+	ret := _m.Called()
+
+	var r0 string
+	if rf, ok := ret.Get(0).(func() string); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+	return r0
+}

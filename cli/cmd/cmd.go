@@ -375,7 +375,7 @@ func setLogging(options *config.Options, ctx *cli.Context, logControl logging.Lo
 	// start watchers, etc.
 	var errors []error
 
-	fmt.Fprintf(os.Stderr, "#!#!#!# Applying log config from %s\n", options.LogConfigFilename)
+	//fmt.Fprintf(os.Stderr, "#!#!#!# Applying log config from %s\n", options.LogConfigFilename)
 	if err := logControl.ApplyConfigFromFile(options.LogConfigFilename); err != nil {
 		errors = append(errors, err)
 	}

@@ -20,7 +20,6 @@ package utils
 
 import (
 	"fmt"
-	"github.com/control-center/serviced/config"
 	"os"
 	"os/user"
 	"path"

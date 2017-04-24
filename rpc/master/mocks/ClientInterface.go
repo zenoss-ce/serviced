@@ -1,6 +1,7 @@
 package mocks
 
 import applicationendpoint "github.com/control-center/serviced/domain/applicationendpoint"
+import audit "github.com/control-center/serviced/domain/audit"
 import health "github.com/control-center/serviced/health"
 import host "github.com/control-center/serviced/domain/host"
 import isvcs "github.com/control-center/serviced/isvcs"
@@ -420,11 +421,11 @@ func (_m *ClientInterface) GetEvaluatedService(serviceID string, instanceID int)
 	}
 
 	var r2 string
-        if rf, ok := ret.Get(1).(func(string, int) string); ok {
-                r2 = rf(serviceID, instanceID)
-        } else {
-                r2 = ret.Get(1).(string)
-        }
+	if rf, ok := ret.Get(1).(func(string, int) string); ok {
+		r2 = rf(serviceID, instanceID)
+	} else {
+		r2 = ret.Get(1).(string)
+	}
 
 	var r3 error
 	if rf, ok := ret.Get(2).(func(string, int) error); ok {
@@ -1153,6 +1154,19 @@ func (_m *ClientInterface) WaitService(serviceIDs []string, state service.Desire
 		r0 = rf(serviceIDs, state, timeout, recursive)
 	} else {
 		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+func (_m *ClientInterface) AuditLog(_a0 audit.AuditLogRequest) error {
+	ret := _m.Called(_a0)
+
+	var r0 error
+	if rf, ok := ret.Get(1).(func(audit.AuditLogRequest) error); ok {
+		r0 = rf(_a0)
+	} else {
+		r0 = ret.Error(1)
 	}
 
 	return r0
