@@ -6,7 +6,7 @@
     'use strict';
     controlplane.controller("ChallengeController",["$scope", "$location", "$notification", "$translate", "auth0Service", "resourcesFactory",
     function($scope, $location, $notification, $translate, auth0Service, resourcesFactory) {
-        debugger;
+        // debugger;
         if(navigator.userAgent.indexOf("Trident") > -1 && navigator.userAgent.indexOf("MSIE 7.0") > -1){
             $notification.create("", $translate.instant("compatibility_mode"), $("#loginNotifications")).warning(false);
         }
