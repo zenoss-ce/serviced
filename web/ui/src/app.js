@@ -25,7 +25,7 @@ var controlplane = angular.module('controlplane', [
     'angularMoment', 'zenNotify', 'serviceHealth', 'ui.datetimepicker',
     'modalService', 'angular-cache', 'ui.codemirror', 'serviceActions',
     'sticky', 'graphPanel', 'servicesFactory', 'healthIcon', 'publicEndpointLink',
-    'authService','auth0Service', 'miscUtils', 'hostsFactory', 'poolsFactory', 'instancesFactory', 'baseFactory',
+    'authService', 'auth0', 'angularAuth0', 'auth0Service', 'miscUtils', 'hostsFactory', 'poolsFactory', 'instancesFactory', 'baseFactory',
     'ngTable', 'jellyTable', 'ngLocationUpdate', 'CCUIState', 'servicedConfig', 'areUIReady', 'log',
     'LogSearch', 'hostIcon', 'appName'
 ]);
