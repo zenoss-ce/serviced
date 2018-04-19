@@ -25,7 +25,7 @@ var controlplane = angular.module('controlplane', [
     'angularMoment', 'zenNotify', 'serviceHealth', 'ui.datetimepicker',
     'modalService', 'angular-cache', 'ui.codemirror', 'serviceActions',
     'sticky', 'graphPanel', 'servicesFactory', 'healthIcon', 'publicEndpointLink',
-    'authService', 'miscUtils', 'hostsFactory', 'poolsFactory', 'instancesFactory', 'baseFactory',
+    'authService','auth0Service', 'miscUtils', 'hostsFactory', 'poolsFactory', 'instancesFactory', 'baseFactory',
     'ngTable', 'jellyTable', 'ngLocationUpdate', 'CCUIState', 'servicedConfig', 'areUIReady', 'log',
     'LogSearch', 'hostIcon', 'appName'
 ]);
@@ -33,6 +33,9 @@ var controlplane = angular.module('controlplane', [
 controlplane.
     config(['$routeProvider', function($routeProvider) {
         $routeProvider.
+            when('/challenge', {
+                templateUrl: '/static/partials/challenge.html',
+                controller: "ChallengeController"}).
             when('/login', {
                 templateUrl: '/static/partials/login.html',
                 controller: "LoginController"}).

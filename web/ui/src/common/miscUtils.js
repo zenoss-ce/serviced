@@ -97,7 +97,7 @@
             unauthorized: function() {
                 log.error('You don\'t appear to be logged in.');
                 // show the login page and then refresh so we lose any incorrect state. CC-279
-                window.location.href = "/#/login";
+                window.location.href = "/#/challenge";
                 window.location.reload();
             },
 

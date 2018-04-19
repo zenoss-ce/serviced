@@ -54,7 +54,7 @@ var (
 	// ErrBadToken is thrown when there is a problem extracting a token from a data stream (e.g. mux, rpc, etc)
 	ErrBadToken = errors.New("Could not extract token")
 	// ErrRestTokenExpired is thrown when an rest token is expired
-	ErrRestTokenExpired = errors.New("Rest token expired")
+	ErrRestTokenExpired = errors.New("Rest token expire")
 	// ErrBadRestToken is throwbn when the rest token cant be extracted or parsed
 	ErrBadRestToken = errors.New("Invalid rest token")
 	// ErrRestTokenBadSig is thrown when a rest token has a bad signature
