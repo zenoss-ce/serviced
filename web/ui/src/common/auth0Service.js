@@ -3,10 +3,18 @@
     'use strict';
     angular
         .module('auth0Service', ["auth0.auth0"])
-        .factory("auth0Service", ["auth0.auth0", "$timeout", "$cookies", "$cookieStore", "$location", "$http", "$notification", "miscUtils", "log",
+        .factory("auth0Service", ["angularAuth0", "$timeout", "$cookies", "$cookieStore", "$location", "$http", "$notification", "miscUtils", "log",
             function auth0Service(angularAuth0, $timeout, $cookies, $cookieStore, $location, $http, $notification, utils, log) {
                 var loggedIn = false;
                 var userName = null;
+
+                const CLIENT_DOMAIN = "zenoss-dev.auth0.com";
+                const CLIENT_ID = "xQF6jCIx6ZynvlvzT8ZWWrbOswcgCwH9";
+
+                angularAuth0.init({
+                    domain: CLIENT_DOMAIN,
+                    clientID: CLIENT_ID
+                });
 
                 var setLoggedIn = function(truth, username) {
                     loggedIn = truth;
