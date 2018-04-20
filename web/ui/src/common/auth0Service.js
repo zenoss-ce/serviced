@@ -2,8 +2,8 @@
 
     'use strict';
     angular
-        .module('auth0Service', ["angularAuth0"])
-        .factory("auth0Service", ["angularAuth0", "$timeout",
+        .module('auth0Service', ["auth0.auth0"])
+        .factory("auth0Service", ["auth0.auth0", "$timeout",
             function auth0Service(angularAuth0, $timeout) {
                 function login() {
                     angularAuth0.authorize();
