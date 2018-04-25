@@ -1,0 +1,49 @@
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Zenoss Cloud Auth</title>
+  </head>
+  <body>
+  Hi there!
+
+  <p>Parsed Hash:</p>
+  <p id = "phash"></p>
+
+  <p>Token:</p>
+  <p id = "token">TBD</p>
+
+  <p>Expires In:</p>
+  <p id = "expiry">TBD</p>
+
+  <p>Status:</p>
+  <p id = "status">TBD</p>
+
+
+  <script src="https://cdn.auth0.com/js/auth0/9.3.1/auth0.min.js"></script>
+
+  <script>
+      const auth0 = window.auth0;
+      var webAuth = new auth0.WebAuth({
+          domain: 'zenoss-dev.auth0.com',
+          clientID: 'xQF6jCIx6ZynvlvzT8ZWWrbOswcgCwH9',
+          audience: 'https://dev.zing.ninja',
+          scope: 'openid profile read:messages'
+      });
+      webAuth.parseHash((err, authResult) => {
+          if (err) {
+              //this.clearAuthState()
+
+              document.getElementById("status").innerHTML = "ERROR: " + err;
+              return false
+          } else if (authResult && authResult.accessToken && authResult.idToken && authResult.expiresIn) {
+              //this.setAuthState(authResult)
+              document.getElementById("phash").innerHTML = JSON.stringify(authResult);
+              document.getElementById("token").innerHTML = authResult.accessToken;
+              document.getElementById("expiry").innerHTML = authResult.expiresIn;
+              return true
+          }
+          return false
+      });
+  </script>
+  </body>
+</html>
