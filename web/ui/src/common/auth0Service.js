@@ -8,13 +8,13 @@
                 var loggedIn = false;
                 var userName = null;
 
-                const CLIENT_DOMAIN = "zenoss-dev.auth0.com";
-                const CLIENT_ID = "xQF6jCIx6ZynvlvzT8ZWWrbOswcgCwH9";
-
-                angularAuth0.init({
-                    domain: CLIENT_DOMAIN,
-                    clientID: CLIENT_ID
-                });
+                // const CLIENT_DOMAIN = "zenoss-dev.auth0.com";
+                // const CLIENT_ID = "xQF6jCIx6ZynvlvzT8ZWWrbOswcgCwH9";
+                //
+                // angularAuth0.init({
+                //     domain: CLIENT_DOMAIN,
+                //     clientID: CLIENT_ID
+                // });
 
                 var setLoggedIn = function(truth, username) {
                     loggedIn = truth;
@@ -95,27 +95,47 @@
         .config(config);
 
     config.$inject = [
-        '$stateProvider',
-        '$locationProvider',
-        '$urlRouterProvider',
+        // '$stateProvider',
+        // '$locationProvider',
+        // '$urlRouterProvider',
         'angularAuth0Provider'
     ];
 
-    function config($stateProvider, $locationProvider, $urlRouterProvider,angularAuth0Provider) {
-
-        $stateProvider
-            .state('home', {
-                url: '/',
-                controller: 'HomeController',
-                templateUrl: 'app/home/home.html',
-                controllerAs: 'vm'
-            })
-            .state('callback', {
-                url: '/callback',
-                controller: 'CallbackController',
-                templateUrl: 'app/callback/callback.html',
-                controllerAs: 'vm'
-            });
+    // function config($stateProvider, $locationProvider, $urlRouterProvider,angularAuth0Provider) {
+    //
+    //     $stateProvider
+    //         .state('home', {
+    //             url: '/',
+    //             controller: 'HomeController',
+    //             templateUrl: 'app/home/home.html',
+    //             controllerAs: 'vm'
+    //         })
+    //         .state('callback', {
+    //             url: '/callback',
+    //             controller: 'CallbackController',
+    //             templateUrl: 'app/callback/callback.html',
+    //             controllerAs: 'vm'
+    //         });
+    //
+    //     // Initialization for the angular-auth0 library
+    //     angularAuth0Provider.init({
+    //         clientID: 'xQF6jCIx6ZynvlvzT8ZWWrbOswcgCwH9',
+    //         domain: 'zenoss-dev.auth0.com',
+    //         responseType: 'token id_token',
+    //         audience: 'https://zenoss-dev.auth0.com/userinfo',
+    //         redirectUri: 'http://localhost:3000/callback',
+    //         scope: 'openid'
+    //     });
+    //
+    //     $urlRouterProvider.otherwise('/');
+    //
+    //     $locationProvider.hashPrefix('');
+    //
+    //     /// Comment out the line below to run the app
+    //     // without HTML5 mode (will use hashes in routes)
+    //     $locationProvider.html5Mode(true);
+    // }
+    function config(angularAuth0Provider) {
 
         // Initialization for the angular-auth0 library
         angularAuth0Provider.init({
@@ -123,16 +143,10 @@
             domain: 'zenoss-dev.auth0.com',
             responseType: 'token id_token',
             audience: 'https://zenoss-dev.auth0.com/userinfo',
-            redirectUri: 'http://localhost:3000/callback',
+            // redirectUri: 'http://localhost:3000/callback',
+            redirectUri: 'http://localhost/apps',
             scope: 'openid'
         });
 
-        $urlRouterProvider.otherwise('/');
-
-        $locationProvider.hashPrefix('');
-
-        /// Comment out the line below to run the app
-        // without HTML5 mode (will use hashes in routes)
-        $locationProvider.html5Mode(true);
     }
 })();
