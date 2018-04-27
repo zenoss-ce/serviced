@@ -9,8 +9,10 @@
   <p>Parsed Hash:</p>
   <p id = "phash"></p>
 
-  <p>Token:</p>
-  <p id = "token">TBD</p>
+  <p>Access Token:</p>
+  <p id = "accesstoken">TBD</p>
+  <p>ID Token:</p>
+  <p id = "idtoken">TBD</p>
 
   <p>Expires In:</p>
   <p id = "expiry">TBD</p>
@@ -29,7 +31,49 @@
           audience: 'https://dev.zing.ninja',
           scope: 'openid profile read:messages'
       });
-      webAuth.parseHash((err, authResult) => {
+
+
+      function setCookie(key, value, exseconds) {
+          var d = new Date();
+          d.setTime(d.getTime() + (exseconds * 1000));
+          var expires = "expires="+d.toUTCString();
+          document.cookie = key + "=" + value + ";" + expires + ";path=/";
+      }
+
+      function setLogin(authResult) {
+          if (authResult && authResult.accessToken && authResult.idToken && authResult.expiresIn) {
+              // debugger;
+              setCookie("ZCPToken", authResult.accessToken, authResult.expiresIn);
+              setCookie("ZUsername", "zenny", authResult.expiresIn);
+          }
+      }
+
+      // function post shamelessly borrowed from https://stackoverflow.com/a/133997
+      function post(path, params, method) {
+          method = method || "post"; // Set method to post by default if not specified.
+
+          // The rest of this code assumes you are not using a library.
+          // It can be made less wordy if you use one.
+          var form = document.createElement("form");
+          form.setAttribute("method", method);
+          form.setAttribute("action", path);
+
+          for(var key in params) {
+              if(params.hasOwnProperty(key)) {
+                  var hiddenField = document.createElement("input");
+                  hiddenField.setAttribute("type", "hidden");
+                  hiddenField.setAttribute("name", key);
+                  hiddenField.setAttribute("value", params[key]);
+
+                  form.appendChild(hiddenField);
+              }
+          }
+
+          document.body.appendChild(form);
+          form.submit();
+      }
+
+      function handleAuth(err, authResult) {
           if (err) {
               //this.clearAuthState()
 
@@ -38,12 +82,24 @@
           } else if (authResult && authResult.accessToken && authResult.idToken && authResult.expiresIn) {
               //this.setAuthState(authResult)
               document.getElementById("phash").innerHTML = JSON.stringify(authResult);
-              document.getElementById("token").innerHTML = authResult.accessToken;
+              document.getElementById("accesstoken").innerHTML = authResult.accessToken;
+              document.getElementById("idtoken").innerHTML = authResult.idToken;
               document.getElementById("expiry").innerHTML = authResult.expiresIn;
+              location.hash = "";
+              // debugger;
+              // window.location.replace('/#/apps');
+              post("/auth0login", {
+                  accessToken: authResult.accessToken,
+                  idToken: authResult.idToken,
+                  expiresIn: authResult.expiresIn,
+              });
+              setLogin(authResult);
               return true
           }
           return false
-      });
+      }
+
+      webAuth.parseHash(handleAuth);
   </script>
   </body>
 </html>

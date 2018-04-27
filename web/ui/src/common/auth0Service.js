@@ -62,6 +62,7 @@
                  * @param {object} scope The 'loggedIn' property will be set if true
                  */
                 function checkLogin($scope) {
+                    // debugger;
                     $scope.dev = $cookieStore.get("ZDevMode");
                     if (loggedIn || $cookies.get("ZCPToken")) {
                         $scope.loggedIn = true;
@@ -99,6 +100,7 @@
             responseType: 'token id_token',
             audience: 'https://zenoss-dev.auth0.com/userinfo',
             redirectUri: 'http://localhost/static/auth0login.html',
+            // redirectUri: 'http://localhost/auth0login',
             scope: 'openid'
         });
 

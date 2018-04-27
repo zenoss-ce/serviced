@@ -103,6 +103,7 @@ func purgeOldsessionTs() {
  * This function should be called by any secure REST resource
  */
 func loginWithBasicAuthOK(r *rest.Request) bool {
+	glog.V(0).Info("loginWithBasicAuthOK()")
 	cookie, err := r.Request.Cookie(sessionCookie)
 	if err != nil {
 		glog.V(1).Info("Error getting cookie ", err)
@@ -126,6 +127,7 @@ func loginWithBasicAuthOK(r *rest.Request) bool {
 }
 
 func loginWithTokenOK(r *rest.Request, token string) bool {
+	glog.V(0).Info("loginWithTokenOK()")
 	restToken, err := auth.ParseRestToken(token)
 	if err != nil {
 		msg := "Unable to parse rest token"
@@ -147,6 +149,7 @@ func loginWithTokenOK(r *rest.Request, token string) bool {
 }
 
 func loginOK(r *rest.Request) bool {
+	glog.V(0).Info("loginOK()")
 	token, tErr := auth.ExtractRestToken(r.Request)
 	if tErr != nil { // There is a token in the header but we could not extract it
 		msg := "Unable to extract auth token from header"
@@ -184,6 +187,7 @@ func restLogout(w *rest.ResponseWriter, r *rest.Request) {
 }
 
 func restLoginWithBasicAuth(w *rest.ResponseWriter, r *rest.Request, ctx *requestContext) {
+	glog.V(0).Info("restLoginWithBasicAuth()")
 	creds := login{}
 	err := r.DecodeJsonPayload(&creds)
 	if err != nil {
@@ -243,6 +247,7 @@ func restLoginWithBasicAuth(w *rest.ResponseWriter, r *rest.Request, ctx *reques
  * Perform login, return JSON
  */
 func restLogin(w *rest.ResponseWriter, r *rest.Request, ctx *requestContext) {
+	glog.V(0).Info("restLogin()")
 	token, tErr := auth.ExtractRestToken(r.Request)
 	if tErr != nil { // There is a token in the header but we could not extract it
 		msg := "Unable to extract auth token from header"
@@ -260,6 +265,7 @@ func restLogin(w *rest.ResponseWriter, r *rest.Request, ctx *requestContext) {
 }
 
 func validateLogin(creds *login, client master.ClientInterface) bool {
+	glog.V(0).Info("validateLogin()")
 	systemUser, err := client.GetSystemUser()
 	if err == nil && creds.Username == systemUser.Name {
 		validated := cpValidateLogin(creds, client)
@@ -270,6 +276,77 @@ func validateLogin(creds *login, client master.ClientInterface) bool {
 	}
 
 	return pamValidateLogin(creds, adminGroup)
+}
+
+func auth0Login(w *rest.ResponseWriter, r *rest.Request, ctx *requestContext) {
+
+	glog.V(0).Info("auth0Login called. RequestURI = ", r.RequestURI)
+	//domain := "zenoss-dev.auth0.com"
+	//conf := &oauth2.Config{
+	//	ClientID:     "xQF6jCIx6ZynvlvzT8ZWWrbOswcgCwH9",
+	//	ClientSecret: "1l953QOzQPBWfTVNbyNzDpHzyuE4EWszdVdavjHKdblNVGv40GrdEixKwjwy0Wvc",
+	//	RedirectURL:  "/callback",
+	//	Scopes:       []string{"openid", "profile"},
+	//	Endpoint: oauth2.Endpoint{
+	//		AuthURL:  "https://" + domain + "/authorize",
+	//		TokenURL: "https://" + domain + "/oauth/token",
+	//	},
+	//}
+
+	header := r.Header.Get("Authorization")
+	glog.V(0).Info("Authorization header: ", header)
+	glog.V(0).Info("Request: %+v", r)
+	glog.V(0).Info("ctx: %+v", ctx)
+	glog.V(0).Info("PathParams:")
+	for k,v := range r.PathParams {
+		glog.V(0).Info("(k,v) = ", k, v)
+	}
+	r.ParseForm()
+	fields :=  []string{"accessToken", "idToken", "expiresIn"}
+	for _, f := range fields {
+		val := r.Form.Get(f)
+		glog.V(0).Info(f,": ", val)
+	}
+	state := r.URL.Query().Get("state")
+	glog.V(0).Info("state = ", state)
+
+	idToken := r.Form.Get("idToken")
+	username := "auth0user"
+
+
+	if validateAuth0Login() {
+		sessionsLock.Lock()
+		defer sessionsLock.Unlock()
+
+		session :=  &sessionT{idToken, username, time.Now(), time.Now()}
+		sessions[session.ID] = session
+
+		glog.V(1).Info("Created authenticated session: ", session.ID)
+		http.SetCookie(
+			w.ResponseWriter,
+			&http.Cookie{
+				Name:   sessionCookie,
+				Value:  session.ID,
+				Path:   "/",
+				MaxAge: 0,
+			})
+		http.SetCookie(
+			w.ResponseWriter,
+			&http.Cookie{
+				Name:   usernameCookie,
+				Value:  username,
+				Path:   "/",
+				MaxAge: 0,
+			})
+
+		w.WriteJson(&simpleResponse{"Accepted", homeLink()})
+	} else {
+		writeJSON(w, &simpleResponse{"Login failed", loginLink()}, http.StatusUnauthorized)
+	}
+}
+func validateAuth0Login() bool {
+	//TODO: actually do some validation here.
+	return true
 }
 
 func cpValidateLogin(creds *login, client master.ClientInterface) bool {
