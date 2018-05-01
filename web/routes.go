@@ -106,6 +106,7 @@ func (sc *ServiceConfig) getRoutes() []rest.Route {
 		rest.Route{"DELETE", "/login", gz(restLogout)},
 		//rest.Route{ HttpMethod: "POST", PathExp: "/challenge", Func: gz}
 		rest.Route{"POST", "/auth0login", sc.noAuth(auth0Login)},
+		rest.Route{"GET", "/auth0login2", sc.noAuth(auth0Login2)},
 
 		// "Misc" stuff
 		rest.Route{"GET", "/top/services", gz(sc.checkAuth(restGetTopServices))},

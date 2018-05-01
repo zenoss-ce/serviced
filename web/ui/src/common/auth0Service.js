@@ -97,9 +97,12 @@
         angularAuth0Provider.init({
             clientID: 'xQF6jCIx6ZynvlvzT8ZWWrbOswcgCwH9',
             domain: 'zenoss-dev.auth0.com',
-            responseType: 'token id_token',
+            responseType: 'code',
+            //responseType: 'token id_token',
+	    //responseMode: 'form-post',
             audience: 'https://zenoss-dev.auth0.com/userinfo',
-            redirectUri: 'http://localhost/static/auth0login.html',
+            redirectUri: 'http://10.87.130.69/auth0login2',
+            //redirectUri: 'http://10.87.130.69/static/auth0login.html',
             // redirectUri: 'http://localhost/auth0login',
             scope: 'openid'
         });

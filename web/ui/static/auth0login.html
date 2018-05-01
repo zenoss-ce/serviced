@@ -24,6 +24,7 @@
   <script src="https://cdn.auth0.com/js/auth0/9.3.1/auth0.min.js"></script>
 
   <script>
+      debugger;
       const auth0 = window.auth0;
       var webAuth = new auth0.WebAuth({
           domain: 'zenoss-dev.auth0.com',
@@ -73,6 +74,33 @@
           form.submit();
       }
 
+      function loginToCC(data) {
+          var url = "/auth0login"
+          var json = JSON.stringify(data)
+          var xhr = new XMLHttpRequest();
+          xhr.open("POST", url, true);
+          xhr.setRequestHeader('Content-type','application/json; charset=utf-8');
+          xhr.onload = function () {
+              var result = JSON.parse(xhr.responseText);
+              if (xhr.readyState == 4 && (xhr.status == "201" || xhr.status == "200")) {
+                  //success - update page w/result
+                  console.table(result);
+                  //debugger;
+                  if (result && result.Detail && result.Detail == "Accepted") {
+                      window.location.replace('/#/apps');
+                  } else {
+                      window.location.replace('/challenge');
+                  }
+              } else {
+                //debugger
+                  // error handling
+                  // console.error(result);
+              }
+          }
+          xhr.send(json);
+      }
+
+
       function handleAuth(err, authResult) {
           if (err) {
               //this.clearAuthState()
@@ -88,11 +116,12 @@
               location.hash = "";
               // debugger;
               // window.location.replace('/#/apps');
-              post("/auth0login", {
-                  accessToken: authResult.accessToken,
-                  idToken: authResult.idToken,
-                  expiresIn: authResult.expiresIn,
-              });
+              loginToCC(authResult);
+              // post("/auth0login", {
+              //     accessToken: authResult.accessToken,
+              //     idToken: authResult.idToken,
+              //     expiresIn: authResult.expiresIn,
+              // });
               setLogin(authResult);
               return true
           }

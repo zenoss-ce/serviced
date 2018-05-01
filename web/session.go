@@ -24,6 +24,8 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"errors"
+	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
@@ -278,6 +280,7 @@ func validateLogin(creds *login, client master.ClientInterface) bool {
 	return pamValidateLogin(creds, adminGroup)
 }
 
+
 func auth0Login(w *rest.ResponseWriter, r *rest.Request, ctx *requestContext) {
 
 	glog.V(0).Info("auth0Login called. RequestURI = ", r.RequestURI)
@@ -344,6 +347,64 @@ func auth0Login(w *rest.ResponseWriter, r *rest.Request, ctx *requestContext) {
 		writeJSON(w, &simpleResponse{"Login failed", loginLink()}, http.StatusUnauthorized)
 	}
 }
+
+func auth0Login2(w *rest.ResponseWriter, r *rest.Request, ctx *requestContext) {
+
+	glog.V(0).Info("auth0Login2 called. RequestURI = ", r.RequestURI)
+	glog.V(0).Info("auth0Login2 called. r.URL = ", r.URL)
+ 
+	//domain := "zenoss-dev.auth0.com"
+	//conf := &oauth2.Config{
+	//	ClientID:     "xQF6jCIx6ZynvlvzT8ZWWrbOswcgCwH9",
+	//	ClientSecret: "1l953QOzQPBWfTVNbyNzDpHzyuE4EWszdVdavjHKdblNVGv40GrdEixKwjwy0Wvc",
+	//	RedirectURL:  "/callback",
+	//	Scopes:       []string{"openid", "profile"},
+	//	Endpoint: oauth2.Endpoint{
+	//		AuthURL:  "https://" + domain + "/authorize",
+	//		TokenURL: "https://" + domain + "/oauth/token",
+	//	},
+	//}
+
+	// Get code parameter from query:
+	v := r.URL.Query()
+	authcode := v["code"][0]
+        glog.V(0).Info("auth0login2: authcode = ", authcode)
+
+/////package main
+	url := "https://zenoss-dev.auth0.com/oauth/token"
+	clientsecret := "1l953QOzQPBWfTVNbyNzDpHzyuE4EWszdVdavjHKdblNVGv40GrdEixKwjwy0Wvc"
+        clientid := "xQF6jCIx6ZynvlvzT8ZWWrbOswcgCwH9"
+	redirecturl := "http://10.87.130.69/static/auth0login.html"
+        payloadstr := "{\"grant_type\":\"authorization_code\"," +
+                "\"client_id\": \""+ clientid +"\"," +
+                "\"client_secret\": \"" + clientsecret + "\"," +
+                "\"code\": \""+ authcode + "\"," +
+                "\"redirect_uri\": \""+ redirecturl +"\"}"
+        payload := strings.NewReader(payloadstr)
+
+//	payload := strings.NewReader("{\"grant_type\":\"authorization_code\"," + 
+//		"\"client_id\": \"PI90g3dQn3a9DU76iEiDKXDuA0JtIFmS\"," +
+//		"\"client_secret\": \"" + clientsecret + "\"," +
+//		"\"code\": \""+ authcode + "\"," +
+//		"\"redirect_uri\": \""+ redirecturl +"\"}")
+        glog.V(0).Info("payloadstr = ", payloadstr)
+	glog.V(0).Info("making POST request to ", url)
+	req, _ := http.NewRequest("POST", url, payload)
+	req.Header.Add("content-type", "application/json")
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+	    glog.V(0).Info("Error from auth0 POST request: ",err)
+	    glog.Fatal(err)
+	}
+	defer res.Body.Close()
+	body, _ := ioutil.ReadAll(res.Body)
+        glog.V(0).Info("response:", res)
+	glog.V(0).Info("body:", body)
+	fmt.Println(res)
+	fmt.Println(string(body))
+////
+}
+
 func validateAuth0Login() bool {
 	//TODO: actually do some validation here.
 	return true
