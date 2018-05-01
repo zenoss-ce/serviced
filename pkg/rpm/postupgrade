@@ -52,4 +52,9 @@ if [ -f /etc/cron.d/cron_zenossdbpack.backup ]; then
     mv /etc/cron.d/cron_zenossdbpack.backup /etc/cron.d/cron_zenossdbpack
 fi
 
+if [ -f /etc/cron.weekly/serviced-fstrim ]; then
+    echo "Removing removing serviced-fstrim from weekly, this is now in daily"
+    rm /etc/cron.weekly/serviced-fstrim
+fi
+
 touch /etc/cron.d/cron_zenossdbpack
