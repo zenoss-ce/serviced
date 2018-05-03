@@ -32,6 +32,7 @@ type Jwks struct {
 }
 
 func getPemCert(token *jwt.Token) ([]byte, error) {
+	glog.V(0).Info("getPemCert() entry")
 	cert := ""
 	resp, err := http.Get("https://zenoss-dev.auth0.com/.well-known/jwks.json")
 
@@ -67,6 +68,7 @@ func getPemCert(token *jwt.Token) ([]byte, error) {
 
 // TODO: possible credit to https://stackoverflow.com/a/33088784/7154147
 func getRSAPublicKey(token *jwt.Token) (*rsa.PublicKey, error) {
+	glog.V(0).Info("getRSAPublicKey() entry")
 	certBytes, err := getPemCert(token)
 	if err != nil {
 		glog.Warning("error getting Pem Cert from auth0: ", err)
@@ -115,9 +117,10 @@ func getAuth0Token(authcode string) (string, error) {
 	return result, nil
 }
 
-type Auth0resp struct {
-	AccessToken string `json:"access_token"`
-	IdToken     string `json:"id_token"`
-	ExpiresIn   int    `json:"expires_in"`
-	TokenType   string `json:"token_type"`
+type Auth0TokenResponse struct {
+	AccessToken  string `json:"access_token"`
+	IdToken      string `json:"id_token"`
+	RefreshToken string `json:"refresh_token,omitempty"`
+	ExpiresIn    int    `json:"expires_in"`
+	TokenType    string `json:"token_type"`
 }

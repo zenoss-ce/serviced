@@ -347,23 +347,27 @@ func auth0Login2(w *rest.ResponseWriter, r *rest.Request, ctx *requestContext) {
 	authcode := v["code"][0]
 	glog.V(0).Info("auth0login2: authcode = ", authcode)
 
+	// Call auth0 to get access token from auth code
 	token, err := getAuth0Token(authcode)
 	if err != nil {
 		glog.Error("Unable to get auth0 token from code: ", err)
 	}
+	// Parse access token into struct
+	auth0Token := Auth0TokenResponse{}
+	json.Unmarshal([]byte(token), &auth0Token)
 
-	auth0Response := Auth0resp{}
-	json.Unmarshal([]byte(token), &auth0Response)
-
-	parsedToken, err := jwt.Parse(auth0Response.IdToken, func(token *jwt.Token) (interface{}, error) {
+	// Parse jwt from IdToken field
+	// TODO: try ParseWithClaims?
+	parsedToken, err := jwt.Parse(auth0Token.IdToken, func(token *jwt.Token) (interface{}, error) {
+		// verify signing method is what we expect
 		if _, ok := token.Method.(*jwt.SigningMethodRSA); !ok {
 			return nil, fmt.Errorf("error parsing RSA public key: wrong signing method\n" )
 		}
+		// extract public key from token
 		key, err := getRSAPublicKey(token)
 		if err != nil {
 			return nil, fmt.Errorf("error getting RSA key from PEM: %v\n", err)
 		}
-		glog.V(2).Info("Got RSA Public key.")
 		return key, nil
 	})
 
@@ -373,20 +377,22 @@ func auth0Login2(w *rest.ResponseWriter, r *rest.Request, ctx *requestContext) {
 
 
 	// When using `Parse`, the result `Claims` would be a map.
-	glog.V(0).Info("parsedToken.Claims: ", fmt.Sprintf("%+v", parsedToken.Claims))
-
 	glog.V(0).Info(fmt.Sprintf("parsedToken.Claims: %+v", parsedToken.Claims))
+	// Cast claims to jwt.MapClaims object
 	MapClaims := parsedToken.Claims.(jwt.MapClaims)
+	// Validate Claims
 	if err = MapClaims.Valid(); err != nil {
 		glog.Warning("Invalid claims from Auth0 JWT token: ", err)
 		return // TODO: figure out error handling for this endpoint
 	}
 
+	// Log claims
 	glog.V(0).Info(fmt.Sprintf("Converted: MapClaims = %+v", MapClaims))
 	glog.V(0).Info("MapClaims.Valid(): ", fmt.Sprintf("%+v", MapClaims.Valid()))
 	for k, v := range MapClaims {
 		glog.V(0).Info(fmt.Sprintf("MapClaims.[%s] = %+v", k, v))
 	}
+	// TODO: validate authorization, create cert, store, redirect
 }
 
 func validateAuth0Login() bool {

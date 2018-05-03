@@ -83,7 +83,6 @@ func (sc *ServiceConfig) getRoutes() []rest.Route {
 		rest.Route{"PUT", "/services/:serviceId/endpoint/:application/vhosts/*name", gz(sc.checkAuth(restAddVirtualHost))},
 		rest.Route{"DELETE", "/services/:serviceId/endpoint/:application/vhosts/*name", gz(sc.checkAuth(restRemoveVirtualHost))},
 		rest.Route{"POST", "/services/:serviceId/endpoint/:application/vhosts/*name", gz(sc.checkAuth(restVirtualHostEnable))},
-
 		// Services (Endpoint Ports)
 		rest.Route{"PUT", "/services/:serviceId/endpoint/:application/ports/*portname", gz(sc.checkAuth(restAddPort))},
 		rest.Route{"DELETE", "/services/:serviceId/endpoint/:application/ports/*portname", gz(sc.checkAuth(restRemovePort))},
