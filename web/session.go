@@ -21,11 +21,13 @@ import (
 	"github.com/zenoss/glog"
 	"github.com/zenoss/go-json-rest"
 
+	"github.com/dgrijalva/jwt-go"
+
 	"crypto/rand"
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
@@ -280,35 +282,23 @@ func validateLogin(creds *login, client master.ClientInterface) bool {
 	return pamValidateLogin(creds, adminGroup)
 }
 
-
 func auth0Login(w *rest.ResponseWriter, r *rest.Request, ctx *requestContext) {
 
 	glog.V(0).Info("auth0Login called. RequestURI = ", r.RequestURI)
-	//domain := "zenoss-dev.auth0.com"
-	//conf := &oauth2.Config{
-	//	ClientID:     "xQF6jCIx6ZynvlvzT8ZWWrbOswcgCwH9",
-	//	ClientSecret: "1l953QOzQPBWfTVNbyNzDpHzyuE4EWszdVdavjHKdblNVGv40GrdEixKwjwy0Wvc",
-	//	RedirectURL:  "/callback",
-	//	Scopes:       []string{"openid", "profile"},
-	//	Endpoint: oauth2.Endpoint{
-	//		AuthURL:  "https://" + domain + "/authorize",
-	//		TokenURL: "https://" + domain + "/oauth/token",
-	//	},
-	//}
 
 	header := r.Header.Get("Authorization")
 	glog.V(0).Info("Authorization header: ", header)
 	glog.V(0).Info("Request: %+v", r)
 	glog.V(0).Info("ctx: %+v", ctx)
 	glog.V(0).Info("PathParams:")
-	for k,v := range r.PathParams {
+	for k, v := range r.PathParams {
 		glog.V(0).Info("(k,v) = ", k, v)
 	}
 	r.ParseForm()
-	fields :=  []string{"accessToken", "idToken", "expiresIn"}
+	fields := []string{"accessToken", "idToken", "expiresIn"}
 	for _, f := range fields {
 		val := r.Form.Get(f)
-		glog.V(0).Info(f,": ", val)
+		glog.V(0).Info(f, ": ", val)
 	}
 	state := r.URL.Query().Get("state")
 	glog.V(0).Info("state = ", state)
@@ -316,12 +306,11 @@ func auth0Login(w *rest.ResponseWriter, r *rest.Request, ctx *requestContext) {
 	idToken := r.Form.Get("idToken")
 	username := "auth0user"
 
-
 	if validateAuth0Login() {
 		sessionsLock.Lock()
 		defer sessionsLock.Unlock()
 
-		session :=  &sessionT{idToken, username, time.Now(), time.Now()}
+		session := &sessionT{idToken, username, time.Now(), time.Now()}
 		sessions[session.ID] = session
 
 		glog.V(1).Info("Created authenticated session: ", session.ID)
@@ -352,57 +341,52 @@ func auth0Login2(w *rest.ResponseWriter, r *rest.Request, ctx *requestContext) {
 
 	glog.V(0).Info("auth0Login2 called. RequestURI = ", r.RequestURI)
 	glog.V(0).Info("auth0Login2 called. r.URL = ", r.URL)
- 
-	//domain := "zenoss-dev.auth0.com"
-	//conf := &oauth2.Config{
-	//	ClientID:     "xQF6jCIx6ZynvlvzT8ZWWrbOswcgCwH9",
-	//	ClientSecret: "1l953QOzQPBWfTVNbyNzDpHzyuE4EWszdVdavjHKdblNVGv40GrdEixKwjwy0Wvc",
-	//	RedirectURL:  "/callback",
-	//	Scopes:       []string{"openid", "profile"},
-	//	Endpoint: oauth2.Endpoint{
-	//		AuthURL:  "https://" + domain + "/authorize",
-	//		TokenURL: "https://" + domain + "/oauth/token",
-	//	},
-	//}
 
 	// Get code parameter from query:
 	v := r.URL.Query()
 	authcode := v["code"][0]
-        glog.V(0).Info("auth0login2: authcode = ", authcode)
+	glog.V(0).Info("auth0login2: authcode = ", authcode)
 
-/////package main
-	url := "https://zenoss-dev.auth0.com/oauth/token"
-	clientsecret := "1l953QOzQPBWfTVNbyNzDpHzyuE4EWszdVdavjHKdblNVGv40GrdEixKwjwy0Wvc"
-        clientid := "xQF6jCIx6ZynvlvzT8ZWWrbOswcgCwH9"
-	redirecturl := "http://10.87.130.69/static/auth0login.html"
-        payloadstr := "{\"grant_type\":\"authorization_code\"," +
-                "\"client_id\": \""+ clientid +"\"," +
-                "\"client_secret\": \"" + clientsecret + "\"," +
-                "\"code\": \""+ authcode + "\"," +
-                "\"redirect_uri\": \""+ redirecturl +"\"}"
-        payload := strings.NewReader(payloadstr)
-
-//	payload := strings.NewReader("{\"grant_type\":\"authorization_code\"," + 
-//		"\"client_id\": \"PI90g3dQn3a9DU76iEiDKXDuA0JtIFmS\"," +
-//		"\"client_secret\": \"" + clientsecret + "\"," +
-//		"\"code\": \""+ authcode + "\"," +
-//		"\"redirect_uri\": \""+ redirecturl +"\"}")
-        glog.V(0).Info("payloadstr = ", payloadstr)
-	glog.V(0).Info("making POST request to ", url)
-	req, _ := http.NewRequest("POST", url, payload)
-	req.Header.Add("content-type", "application/json")
-	res, err := http.DefaultClient.Do(req)
+	token, err := getAuth0Token(authcode)
 	if err != nil {
-	    glog.V(0).Info("Error from auth0 POST request: ",err)
-	    glog.Fatal(err)
+		glog.Error("Unable to get auth0 token from code: ", err)
 	}
-	defer res.Body.Close()
-	body, _ := ioutil.ReadAll(res.Body)
-        glog.V(0).Info("response:", res)
-	glog.V(0).Info("body:", body)
-	fmt.Println(res)
-	fmt.Println(string(body))
-////
+
+	auth0Response := Auth0resp{}
+	json.Unmarshal([]byte(token), &auth0Response)
+
+	parsedToken, err := jwt.Parse(auth0Response.IdToken, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodRSA); !ok {
+			return nil, fmt.Errorf("error parsing RSA public key: wrong signing method\n" )
+		}
+		key, err := getRSAPublicKey(token)
+		if err != nil {
+			return nil, fmt.Errorf("error getting RSA key from PEM: %v\n", err)
+		}
+		glog.V(2).Info("Got RSA Public key.")
+		return key, nil
+	})
+
+	if err != nil {
+		glog.Warning("unable to parse token: ", err)
+	}
+
+
+	// When using `Parse`, the result `Claims` would be a map.
+	glog.V(0).Info("parsedToken.Claims: ", fmt.Sprintf("%+v", parsedToken.Claims))
+
+	glog.V(0).Info(fmt.Sprintf("parsedToken.Claims: %+v", parsedToken.Claims))
+	MapClaims := parsedToken.Claims.(jwt.MapClaims)
+	if err = MapClaims.Valid(); err != nil {
+		glog.Warning("Invalid claims from Auth0 JWT token: ", err)
+		return // TODO: figure out error handling for this endpoint
+	}
+
+	glog.V(0).Info(fmt.Sprintf("Converted: MapClaims = %+v", MapClaims))
+	glog.V(0).Info("MapClaims.Valid(): ", fmt.Sprintf("%+v", MapClaims.Valid()))
+	for k, v := range MapClaims {
+		glog.V(0).Info(fmt.Sprintf("MapClaims.[%s] = %+v", k, v))
+	}
 }
 
 func validateAuth0Login() bool {
