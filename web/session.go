@@ -21,13 +21,9 @@ import (
 	"github.com/zenoss/glog"
 	"github.com/zenoss/go-json-rest"
 
-	"github.com/dgrijalva/jwt-go"
-
 	"crypto/rand"
 	"encoding/base64"
-	"encoding/json"
 	"errors"
-	"fmt"
 	"net/http"
 	"net/url"
 	"os"
@@ -152,6 +148,28 @@ func loginWithTokenOK(r *rest.Request, token string) bool {
 	}
 }
 
+func loginWithAuth0TokenOK(r *rest.Request, token string) bool {
+	glog.V(0).Info("loginWithAuth0TokenOK()")
+	auth0Token, err := auth.ParseAuth0Token(token)
+	if err != nil {
+		msg := "Unable to parse rest token"
+		plog.WithError(err).WithField("url", r.URL.String()).Debug(msg)
+		return false
+	} else {
+		if !auth0Token.ValidateRequestHash(r.Request) {
+			msg := "Could not login with rest token. Request signature does not match token."
+			plog.WithField("url", r.URL.String()).Debug(msg)
+			return false
+		} else if !auth0Token.HasAdminAccess() {
+			msg := "Could not login with rest token. Insufficient permissions."
+			plog.WithField("url", r.URL.String()).Debug(msg)
+			return false
+		} else {
+			return true
+		}
+	}
+}
+
 func loginOK(r *rest.Request) bool {
 	glog.V(0).Info("loginOK()")
 	token, tErr := auth.ExtractRestToken(r.Request)
@@ -160,7 +178,14 @@ func loginOK(r *rest.Request) bool {
 		plog.WithError(tErr).WithField("url", r.URL.String()).Debug(msg)
 		return false
 	} else if token != "" {
-		return loginWithTokenOK(r, token)
+		// try Auth0 login first, then old token login
+		if loginWithAuth0TokenOK(r, token)  {
+			return true
+		}
+		if loginWithTokenOK(r, token) {
+			return true
+		}
+		return false
 	} else {
 		return loginWithBasicAuthOK(r)
 	}
@@ -258,7 +283,9 @@ func restLogin(w *rest.ResponseWriter, r *rest.Request, ctx *requestContext) {
 		plog.WithError(tErr).Warning(msg)
 		writeJSON(w, &simpleResponse{msg, loginLink()}, http.StatusUnauthorized)
 	} else if token != "" {
-		if loginWithTokenOK(r, token) {
+		if loginWithAuth0TokenOK(r, token) {
+			w.WriteJson(&simpleResponse{"Accepted", homeLink()})
+		} else if loginWithTokenOK(r, token) {
 			w.WriteJson(&simpleResponse{"Accepted", homeLink()})
 		} else {
 			writeJSON(w, &simpleResponse{"Login failed", loginLink()}, http.StatusUnauthorized)
@@ -280,124 +307,6 @@ func validateLogin(creds *login, client master.ClientInterface) bool {
 	}
 
 	return pamValidateLogin(creds, adminGroup)
-}
-
-func auth0Login(w *rest.ResponseWriter, r *rest.Request, ctx *requestContext) {
-
-	glog.V(0).Info("auth0Login called. RequestURI = ", r.RequestURI)
-
-	header := r.Header.Get("Authorization")
-	glog.V(0).Info("Authorization header: ", header)
-	glog.V(0).Info("Request: %+v", r)
-	glog.V(0).Info("ctx: %+v", ctx)
-	glog.V(0).Info("PathParams:")
-	for k, v := range r.PathParams {
-		glog.V(0).Info("(k,v) = ", k, v)
-	}
-	r.ParseForm()
-	fields := []string{"accessToken", "idToken", "expiresIn"}
-	for _, f := range fields {
-		val := r.Form.Get(f)
-		glog.V(0).Info(f, ": ", val)
-	}
-	state := r.URL.Query().Get("state")
-	glog.V(0).Info("state = ", state)
-
-	idToken := r.Form.Get("idToken")
-	username := "auth0user"
-
-	if validateAuth0Login() {
-		sessionsLock.Lock()
-		defer sessionsLock.Unlock()
-
-		session := &sessionT{idToken, username, time.Now(), time.Now()}
-		sessions[session.ID] = session
-
-		glog.V(1).Info("Created authenticated session: ", session.ID)
-		http.SetCookie(
-			w.ResponseWriter,
-			&http.Cookie{
-				Name:   sessionCookie,
-				Value:  session.ID,
-				Path:   "/",
-				MaxAge: 0,
-			})
-		http.SetCookie(
-			w.ResponseWriter,
-			&http.Cookie{
-				Name:   usernameCookie,
-				Value:  username,
-				Path:   "/",
-				MaxAge: 0,
-			})
-
-		w.WriteJson(&simpleResponse{"Accepted", homeLink()})
-	} else {
-		writeJSON(w, &simpleResponse{"Login failed", loginLink()}, http.StatusUnauthorized)
-	}
-}
-
-func auth0Login2(w *rest.ResponseWriter, r *rest.Request, ctx *requestContext) {
-
-	glog.V(0).Info("auth0Login2 called. RequestURI = ", r.RequestURI)
-	glog.V(0).Info("auth0Login2 called. r.URL = ", r.URL)
-
-	// Get code parameter from query:
-	v := r.URL.Query()
-	authcode := v["code"][0]
-	glog.V(0).Info("auth0login2: authcode = ", authcode)
-
-	// Call auth0 to get access token from auth code
-	token, err := getAuth0Token(authcode)
-	if err != nil {
-		glog.Error("Unable to get auth0 token from code: ", err)
-	}
-	// Parse access token into struct
-	auth0Token := Auth0TokenResponse{}
-	json.Unmarshal([]byte(token), &auth0Token)
-
-	// Parse jwt from IdToken field
-	// TODO: try ParseWithClaims?
-	parsedToken, err := jwt.Parse(auth0Token.IdToken, func(token *jwt.Token) (interface{}, error) {
-		// verify signing method is what we expect
-		if _, ok := token.Method.(*jwt.SigningMethodRSA); !ok {
-			return nil, fmt.Errorf("error parsing RSA public key: wrong signing method\n" )
-		}
-		// extract public key from token
-		key, err := getRSAPublicKey(token)
-		if err != nil {
-			return nil, fmt.Errorf("error getting RSA key from PEM: %v\n", err)
-		}
-		return key, nil
-	})
-
-	if err != nil {
-		glog.Warning("unable to parse token: ", err)
-	}
-
-
-	// When using `Parse`, the result `Claims` would be a map.
-	glog.V(0).Info(fmt.Sprintf("parsedToken.Claims: %+v", parsedToken.Claims))
-	// Cast claims to jwt.MapClaims object
-	MapClaims := parsedToken.Claims.(jwt.MapClaims)
-	// Validate Claims
-	if err = MapClaims.Valid(); err != nil {
-		glog.Warning("Invalid claims from Auth0 JWT token: ", err)
-		return // TODO: figure out error handling for this endpoint
-	}
-
-	// Log claims
-	glog.V(0).Info(fmt.Sprintf("Converted: MapClaims = %+v", MapClaims))
-	glog.V(0).Info("MapClaims.Valid(): ", fmt.Sprintf("%+v", MapClaims.Valid()))
-	for k, v := range MapClaims {
-		glog.V(0).Info(fmt.Sprintf("MapClaims.[%s] = %+v", k, v))
-	}
-	// TODO: validate authorization, create cert, store, redirect
-}
-
-func validateAuth0Login() bool {
-	//TODO: actually do some validation here.
-	return true
 }
 
 func cpValidateLogin(creds *login, client master.ClientInterface) bool {

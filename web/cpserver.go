@@ -255,6 +255,7 @@ func routeToInternalServiceProxy(path string, target string, requiresAuth bool, 
 	}
 	// Wrap the normal http.Handler in a rest.handlerFunc
 	handlerFunc := func(w *rest.ResponseWriter, r *rest.Request) {
+		logger.Info("handler Func from routeToInternalServiceProxy() called.")
 		// All proxied requests should be authenticated first
 		if requiresAuth && !loginOK(r) {
 			restUnauthorized(w)
@@ -287,6 +288,7 @@ func (sc *ServiceConfig) unAuthorizedClient(realfunc handlerClientFunc) handlerF
 
 func (sc *ServiceConfig) authorizedClient(realfunc handlerClientFunc) handlerFunc {
 	return func(w *rest.ResponseWriter, r *rest.Request) {
+		plog.Info("authorizedClient handler called")
 		if !loginOK(r) {
 			restUnauthorized(w)
 			return
@@ -346,6 +348,8 @@ func (sc *ServiceConfig) newRequestHandler(check checkFunc, realfunc ctxhandlerF
 
 func (sc *ServiceConfig) checkAuth(realfunc ctxhandlerFunc) handlerFunc {
 	check := func(w *rest.ResponseWriter, r *rest.Request) bool {
+		logger := plog.WithField("bindport", sc.bindPort)
+		logger.Info("Starting checkAuth")
 		if !loginOK(r) {
 			restUnauthorized(w)
 			return false

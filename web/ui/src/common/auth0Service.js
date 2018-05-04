@@ -62,12 +62,12 @@
                  * @param {object} scope The 'loggedIn' property will be set if true
                  */
                 function checkLogin($scope) {
-                    // debugger;
-                    $scope.dev = $cookieStore.get("ZDevMode");
-                    if (loggedIn || $cookies.get("ZCPToken")) {
+                    var at = window.sessionStorage.getItem("auth0AccessToken");
+                    var it  = window.sessionStorage.getItem("auth0IDToken");
+                    if (at && it) {
                         $scope.loggedIn = true;
                         $scope.user = {
-                            username: $cookies.get("ZUsername")
+                            username: "succesful auth0 login"
                         };
                         return;
                     }
@@ -94,13 +94,12 @@
     function config(angularAuth0Provider) {
         // Initialization for the angular-auth0 library
         angularAuth0Provider.init({
-            clientID: 'xQF6jCIx6ZynvlvzT8ZWWrbOswcgCwH9',
             domain: 'zenoss-dev.auth0.com',
-            responseType: 'code',
-            //responseType: 'token id_token',
-            audience: 'https://zenoss-dev.auth0.com/userinfo',
-            redirectUri: 'http://10.87.130.69/auth0login2',
-            scope: 'openid'
+            clientID: 'xQF6jCIx6ZynvlvzT8ZWWrbOswcgCwH9',
+            redirectUri: window.location.origin + "/static/auth0callback.html",
+            audience: 'https://dev.zing.ninja',
+            responseType: "token id_token",
+            scope: 'openid profile read:messages'
         });
 
     }
