@@ -1,15 +1,16 @@
 package auth
 
 import (
-	"crypto/rsa"
-	"crypto/x509"
-	"encoding/json"
-	"encoding/pem"
-	"errors"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/zenoss/glog"
-	"net/http"
 	"fmt"
+	"github.com/control-center/serviced/utils"
+	"net/http"
+	"encoding/json"
+	"errors"
+	"crypto/rsa"
+	"encoding/pem"
+	"crypto/x509"
 )
 
 // TODO: determine whether we need TP import for this code from https://auth0.com/docs/quickstart/backend/golang/01-authorization
@@ -19,6 +20,8 @@ type jwtAuth0Claims struct {
 	IssuedAt      int64  `json:"iat,omitempty"`
 	ExpiresAt     int64  `json:"exp,omitempty"`
 	Audience      []string `json:"aud,omitempty"`
+	Groups        []string `json:"https://zenoss.com/groups,omitempty"`
+	Subject       string   `json:"sub, omitempty"`
 }
 
 func (t *jwtAuth0Claims) Valid() error {
@@ -36,6 +39,11 @@ type RestToken interface {
 	ValidateRequestHash(r *http.Request) bool
 	HasAdminAccess() bool
 }*/
+
+type Auth0Token interface {
+	HasAdminAccess() bool
+}
+
 type jwtAuth0RestToken struct {
 	*jwtAuth0Claims
 	authIdentity Identity
@@ -60,15 +68,21 @@ func (t *jwtAuth0Claims) RestToken() string {
 }
 
 
-func (t *jwtAuth0Claims) ValidateRequestHash(r *http.Request) bool {
-	// TODO: implement properly
-	glog.Error("Function jwtAuth0Claims.ValidateRequestHash called - needs implementation. (returns true for now, which is INSECURE)")
-	return true
-}
+//func (t *jwtAuth0Claims) ValidateRequestHash(r *http.Request) bool {
+//	// TODO: implement properly
+//	hash := GetRequestHash(r)
+//	return bytes.Equal(t.ReqHash, hash)
+//	glog.Error("Function jwtAuth0Claims.ValidateRequestHash called - needs implementation. (returns true for now, which is INSECURE)")
+//	return true
+//}
 
 func (t *jwtAuth0Claims) HasAdminAccess() bool {
-	// TODO: implement
-	glog.Error("Function jwtAuth0Claims.HasAdminAccess called - needs implementation. (returns true for now, which is INSECURE)")
+	//glog.V(0).Info("Checking Admin Access...")
+	if !utils.StringInSlice("All Zenoss Employees", t.Groups) {
+		glog.Warning("Auth0 Admin access denied - 'All Zenoss Employess' not found in Groups.")
+		return false
+	}
+	//glog.V(0).Info("... Admin access granted.")
 	return true
 }
 
@@ -85,8 +99,12 @@ type Jwks struct {
 	Keys []JSONWebkeys `json:"keys"`
 }
 
+/*
+TODO: Look into caching this, so we're not making a web request every time an authentication
+request comes in.
+*/
 func getPemCert(token *jwt.Token) ([]byte, error) {
-	glog.V(0).Info("getPemCert() entry")
+	//glog.V(0).Info("getPemCert() entry")
 	cert := ""
 	resp, err := http.Get("https://zenoss-dev.auth0.com/.well-known/jwks.json")
 
@@ -122,7 +140,7 @@ func getPemCert(token *jwt.Token) ([]byte, error) {
 
 // TODO: possible credit to https://stackoverflow.com/a/33088784/7154147
 func getRSAPublicKey(token *jwt.Token) (*rsa.PublicKey, error) {
-	glog.V(0).Info("getRSAPublicKey() entry")
+	//glog.V(0).Info("getRSAPublicKey() entry")
 	certBytes, err := getPemCert(token)
 	if err != nil {
 		glog.Warning("error getting Pem Cert from auth0: ", err)
@@ -139,28 +157,18 @@ func getRSAPublicKey(token *jwt.Token) (*rsa.PublicKey, error) {
 	return rsaPublicKey, nil
 }
 
-/*
-    // Parse jwt from IdToken field
-	// TODO: try ParseWithClaims?
-	parsedToken, err := jwt.Parse(auth0Token.IdToken, func(token *jwt.Token) (interface{}, error) {
-		// verify signing method is what we expect
-		if _, ok := token.Method.(*jwt.SigningMethodRSA); !ok {
-			return nil, fmt.Errorf("error parsing RSA public key: wrong signing method\n" )
-		}
-		// extract public key from token
-		key, err := getRSAPublicKey(token)
-		if err != nil {
-			return nil, fmt.Errorf("error getting RSA key from PEM: %v\n", err)
-		}
-		return key, nil
-	})*/
 
-func ParseAuth0Token(token string) (RestToken, error) {
-	glog.V(0).Info("ParseAuth0Token(): ", token)
+/*
+	See https://auth0.com/docs/api-auth/tutorials/verify-access-token for information on
+	validating auth0 tokens. Per https://jwt.io/, the jwt-go library validates exp,
+	but not iss or sub.
+*/
+func ParseAuth0Token(token string) (Auth0Token, error) {
+	//glog.V(0).Info("ParseAuth0Token(): ", token)
 	claims := &jwtAuth0Claims{}
 	identity := &jwtIdentity{}
 	parsed, err := jwt.ParseWithClaims(token, claims, func (token *jwt.Token) (interface{}, error) {
-		glog.V(0).Info("in callback inside jwt.ParseWithClaims()")
+		//glog.V(0).Info("in callback inside jwt.ParseWithClaims()")
 		// Validate the algorithm matches the key
 		if _, ok := token.Method.(*jwt.SigningMethodRSA); !ok {
 			glog.Warning("error getting RSA key from PEM: ", ErrInvalidSigningMethod)
@@ -173,18 +181,8 @@ func ParseAuth0Token(token string) (RestToken, error) {
 			glog.Warning("error getting RSA key from PEM: ", err)
 			return nil, fmt.Errorf("error getting RSA key from PEM: %v\n", err)
 		}
-		glog.V(0).Info("ParseAuth0Token(): returning key: ", fmt.Sprintf("%+v", key))
+		//glog.V(0).Info("ParseAuth0Token(): returning key: ", fmt.Sprintf("%+v", key))
 		return key, nil
-		//// Get the delegate token and extract the host delegate key
-		//id, err := ParseJWTIdentity(claims.DelegateToken)
-		//if err != nil {
-		//	return nil, err
-		//}
-		//if ji, ok := id.(*jwtIdentity); ok {
-		//	identity = ji
-		//	return RSAPublicKeyFromPEM([]byte(ji.PubKey))
-		//}
-		//return nil, ErrIdentityTokenBadSig
 	})
 	if err != nil {
 		if verr, ok := err.(*jwt.ValidationError); ok {
@@ -217,13 +215,13 @@ func ParseAuth0Token(token string) (RestToken, error) {
 		glog.Warning("ParseAuth0Token: nope: ", err)
 		return nil, err
 	}
-	glog.V(0).Info("ParseAuth0Token: so far, so good...")
+	//glog.V(0).Info("ParseAuth0Token: so far, so good...")
 	if claims, ok := parsed.Claims.(*jwtAuth0Claims); ok && parsed.Valid {
 		restToken := &jwtAuth0RestToken{}
 		restToken.jwtAuth0Claims = claims
 		restToken.authIdentity = identity
 		restToken.restToken = token
-		glog.V(0).Info("ParseAuth0Token: success!")
+		//glog.V(0).Info("ParseAuth0Token: success!")
 		return restToken, nil
 	}
 	glog.Warning("ParseAuth0Token: womp, womp!: ", ErrIdentityTokenInvalid)

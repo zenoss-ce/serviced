@@ -149,18 +149,19 @@ func loginWithTokenOK(r *rest.Request, token string) bool {
 }
 
 func loginWithAuth0TokenOK(r *rest.Request, token string) bool {
-	glog.V(0).Info("loginWithAuth0TokenOK()")
+	//glog.V(0).Info("loginWithAuth0TokenOK()")
 	auth0Token, err := auth.ParseAuth0Token(token)
 	if err != nil {
 		msg := "Unable to parse rest token"
 		plog.WithError(err).WithField("url", r.URL.String()).Debug(msg)
 		return false
 	} else {
-		if !auth0Token.ValidateRequestHash(r.Request) {
-			msg := "Could not login with rest token. Request signature does not match token."
-			plog.WithField("url", r.URL.String()).Debug(msg)
-			return false
-		} else if !auth0Token.HasAdminAccess() {
+		//if !auth0Token.ValidateRequestHash(r.Request) {
+		//	msg := "Could not login with rest token. Request signature does not match token."
+		//	plog.WithField("url", r.URL.String()).Debug(msg)
+		//	return false
+		//} else
+		if !auth0Token.HasAdminAccess() {
 			msg := "Could not login with rest token. Insufficient permissions."
 			plog.WithField("url", r.URL.String()).Debug(msg)
 			return false
@@ -171,7 +172,7 @@ func loginWithAuth0TokenOK(r *rest.Request, token string) bool {
 }
 
 func loginOK(r *rest.Request) bool {
-	glog.V(0).Info("loginOK()")
+	//glog.V(0).Info("loginOK()")
 	token, tErr := auth.ExtractRestToken(r.Request)
 	if tErr != nil { // There is a token in the header but we could not extract it
 		msg := "Unable to extract auth token from header"
@@ -180,13 +181,16 @@ func loginOK(r *rest.Request) bool {
 	} else if token != "" {
 		// try Auth0 login first, then old token login
 		if loginWithAuth0TokenOK(r, token)  {
+			glog.V(0).Info("Logged in with Auth0.")
 			return true
 		}
 		if loginWithTokenOK(r, token) {
+			glog.V(0).Info("Logged in with Token.")
 			return true
 		}
 		return false
 	} else {
+		glog.V(0).Info("Trying login With Basic Auth.")
 		return loginWithBasicAuthOK(r)
 	}
 }
@@ -195,12 +199,13 @@ func loginOK(r *rest.Request) bool {
  * Perform logout, return JSON
  */
 func restLogout(w *rest.ResponseWriter, r *rest.Request) {
+	glog.V(0).Info("restLogout() called.")
 	cookie, err := r.Request.Cookie(sessionCookie)
 	if err != nil {
-		glog.V(1).Info("Unable to read session cookie")
+		glog.V(0).Info("Unable to read session cookie")
 	} else {
 		deleteSessionT(cookie.Value)
-		glog.V(1).Infof("Deleted session %s for explicit logout", cookie.Value)
+		glog.V(0).Infof("Deleted session %s for explicit logout", cookie.Value)
 	}
 
 	http.SetCookie(

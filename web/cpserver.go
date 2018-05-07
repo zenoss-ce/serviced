@@ -258,6 +258,7 @@ func routeToInternalServiceProxy(path string, target string, requiresAuth bool, 
 		logger.Info("handler Func from routeToInternalServiceProxy() called.")
 		// All proxied requests should be authenticated first
 		if requiresAuth && !loginOK(r) {
+			//TODO: INVESTIGATE HERE FOR KIBANA / METRICS issues
 			restUnauthorized(w)
 			return
 		}

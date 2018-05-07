@@ -43,6 +43,8 @@
             logout: function(){
                 $http.delete('/login').
                     success(function(data, status) {
+                        window.sessionStorage.removeItem("auth0AccessToken");
+                        window.sessionStorage.removeItem("auth0IDToken");
                         // On successful logout, redirect to /login
                         $location.path('/login');
                     }).
