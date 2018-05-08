@@ -26,7 +26,14 @@ type jwtAuth0Claims struct {
 
 func (t *jwtAuth0Claims) Valid() error {
 	if t.Expired() {
-		return ErrRestTokenExpired
+		return ErrAuth0TokenExpired
+	}
+	if t.Issuer != "https://zenoss-dev.auth0.com/" {
+		return ErrAuth0TokenBadIssuer
+	}
+	//TODO: make this configurable (or at least const), and create new API in Auth0 for CC with appropriate Audience field.) https://manage.auth0.com/#/apis
+	if !utils.StringInSlice("https://dev.zing.ninja", t.Audience) {
+		return ErrAuth0TokenBadAudience
 	}
 	return nil
 }
@@ -54,18 +61,18 @@ func (t *jwtAuth0Claims) Expired() bool {
 	now := jwt.TimeFunc().UTC().Unix()
 	return now >= t.ExpiresAt
 }
-
-func (t *jwtAuth0Claims) AuthToken() string {
-	// TODO: implement
-	glog.Error("Function jwtAuth0Claims.AuthToken called - needs implementation.")
-	return ""
-}
-
-func (t *jwtAuth0Claims) RestToken() string {
-	// TODO: implement
-	glog.Error("Function jwtAuth0Claims.RestToken called - needs implementation.")
-	return ""
-}
+//
+//func (t *jwtAuth0Claims) AuthToken() string {
+//	// TODO: implement
+//	glog.Error("Function jwtAuth0Claims.AuthToken called - needs implementation.")
+//	return ""
+//}
+//
+//func (t *jwtAuth0Claims) RestToken() string {
+//	// TODO: implement
+//	glog.Error("Function jwtAuth0Claims.RestToken called - needs implementation.")
+//	return ""
+//}
 
 
 //func (t *jwtAuth0Claims) ValidateRequestHash(r *http.Request) bool {

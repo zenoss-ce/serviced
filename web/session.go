@@ -30,6 +30,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"net/http/httputil"
 )
 
 const sessionCookie = "ZCPToken"
@@ -173,6 +174,11 @@ func loginWithAuth0TokenOK(r *rest.Request, token string) bool {
 
 func loginOK(r *rest.Request) bool {
 	//glog.V(0).Info("loginOK()")
+	requestDump, err := httputil.DumpRequest(r.Request, true)
+	if err != nil {
+		glog.Error(err)
+	}
+	//glog.V(0).Info(string(requestDump))
 	token, tErr := auth.ExtractRestToken(r.Request)
 	if tErr != nil { // There is a token in the header but we could not extract it
 		msg := "Unable to extract auth token from header"
@@ -182,6 +188,7 @@ func loginOK(r *rest.Request) bool {
 		// try Auth0 login first, then old token login
 		if loginWithAuth0TokenOK(r, token)  {
 			glog.V(0).Info("Logged in with Auth0.")
+			glog.V(0).Info(string(requestDump))
 			return true
 		}
 		if loginWithTokenOK(r, token) {
@@ -191,6 +198,7 @@ func loginOK(r *rest.Request) bool {
 		return false
 	} else {
 		glog.V(0).Info("Trying login With Basic Auth.")
+		glog.V(0).Info("Request dump: ", string(requestDump))
 		return loginWithBasicAuthOK(r)
 	}
 }
