@@ -23,13 +23,15 @@
 
   <script src="https://cdn.auth0.com/js/auth0/9.3.1/auth0.min.js"></script>
 
+  <script src="globals.js"></script>
   <script>
       debugger;
       const auth0 = window.auth0;
+      console.info('Config = ' + JSON.stringify(Config));
       var webAuth = new auth0.WebAuth({
-          domain: 'zenoss-dev.auth0.com',
-          clientID: 'xQF6jCIx6ZynvlvzT8ZWWrbOswcgCwH9',
-          audience: 'https://dev.zing.ninja',
+          domain: Config.Auth0Domain,
+          clientID: Config.Auth0ClientID,
+          audience: Config.Auth0Audience,
           scope: 'openid profile read:messages'
       });
 
@@ -43,7 +45,7 @@
 
       function setLogin(authResult) {
           if (authResult && authResult.accessToken && authResult.idToken && authResult.expiresIn) {
-              // debugger;
+              debugger;
               setCookie("ZCPToken", authResult.accessToken, authResult.expiresIn);
               setCookie("ZUsername", "zenny", authResult.expiresIn);
           }
@@ -85,16 +87,16 @@
               if (xhr.readyState == 4 && (xhr.status == "201" || xhr.status == "200")) {
                   //success - update page w/result
                   console.table(result);
-                  //debugger;
+                  debugger;
                   if (result && result.Detail && result.Detail == "Accepted") {
                       window.location.replace('/#/apps');
                   } else {
                       window.location.replace('/challenge');
                   }
               } else {
-                //debugger
+                debugger
                   // error handling
-                  // console.error(result);
+                  console.error(result);
               }
           }
           xhr.send(json);
@@ -116,6 +118,7 @@
               location.hash = "";
               // debugger;
               // window.location.replace('/#/apps');
+              debugger;
               loginToCC(authResult);
               // post("/auth0login", {
               //     accessToken: authResult.accessToken,
@@ -127,7 +130,7 @@
           }
           return false
       }
-
+      debugger;
       webAuth.parseHash(handleAuth);
   </script>
   </body>

@@ -1,9 +1,9 @@
 
 var webAuth = new auth0.WebAuth({
-    domain: 'zenoss-dev.auth0.com',
-    clientID: 'xQF6jCIx6ZynvlvzT8ZWWrbOswcgCwH9',
+    domain: Config.Auth0Domain,
+    clientID: Config.Auth0ClientID,
     redirectUri: window.location + "/auth0callback.html",
-    audience: 'https://dev.zing.ninja',
+    audience: Config.Auth0Audience,
     responseType: "token id_token",
     scope: 'openid profile read:messages'
 });

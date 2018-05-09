@@ -57,7 +57,7 @@ func (t *jwtAuth0Claims) Expired() bool {
 func (t *jwtAuth0Claims) HasAdminAccess() bool {
 	//TODO: make group membership a config setting
 	if !utils.StringInSlice("All Zenoss Employees", t.Groups) {
-		glog.Warning("Auth0 Admin access denied - 'All Zenoss Employess' not found in Groups.")
+		glog.Warning("Auth0 Admin access denied - 'All Zenoss Employees' not found in Groups.")
 		return false
 	}
 	return true
