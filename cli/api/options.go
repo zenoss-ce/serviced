@@ -192,6 +192,8 @@ func GetDefaultOptions(cfg utils.ConfigReader) config.Options {
 		StorageMinimumFreeSpace:    cfg.StringVal("STORAGE_MIN_FREE", "3G"),
 		BackupEstimatedCompression: cfg.Float64Val("BACKUP_ESTIMATED_COMPRESSION", 1.0),
 		BackupMinOverhead:          cfg.StringVal("BACKUP_MIN_OVERHEAD", "0G"),
+		Auth0Domain:                cfg.StringVal("AUTH0_DOMAIN", "zenoss-dev.auth0.com"),
+		Auth0Audience:              cfg.StringVal("AUTH0_AUDIENCE", "https://dev.zing.ninja"),
 	}
 
 	options.Endpoint = cfg.StringVal("ENDPOINT", "")

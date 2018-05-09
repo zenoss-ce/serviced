@@ -11,9 +11,8 @@ import (
 	"crypto/rsa"
 	"encoding/pem"
 	"crypto/x509"
+	"github.com/control-center/serviced/config"
 )
-
-// TODO: determine whether we need TP import for this code from https://auth0.com/docs/quickstart/backend/golang/01-authorization
 
 type jwtAuth0Claims struct {
 	Issuer        string `json:"iss,omitempty"`
@@ -28,24 +27,17 @@ func (t *jwtAuth0Claims) Valid() error {
 	if t.Expired() {
 		return ErrAuth0TokenExpired
 	}
-	if t.Issuer != "https://zenoss-dev.auth0.com/" {
+	opts := config.GetOptions()
+	expectedIssuer := fmt.Sprintf("https://%s/", opts.Auth0Domain)
+	if t.Issuer != expectedIssuer {
 		return ErrAuth0TokenBadIssuer
 	}
-	//TODO: make this configurable (or at least const), and create new API in Auth0 for CC with appropriate Audience field.) https://manage.auth0.com/#/apis
-	if !utils.StringInSlice("https://dev.zing.ninja", t.Audience) {
+	//TODO: create a new API in Auth0 for CC with appropriate Audience field, and update Auth0Audience value in configuration.) https://manage.auth0.com/#/apis
+	if !utils.StringInSlice(opts.Auth0Audience, t.Audience) {
 		return ErrAuth0TokenBadAudience
 	}
 	return nil
 }
-/*
-type RestToken interface {
-	Valid() error
-	Expired() bool
-	AuthToken() string
-	RestToken() string
-	ValidateRequestHash(r *http.Request) bool
-	HasAdminAccess() bool
-}*/
 
 type Auth0Token interface {
 	HasAdminAccess() bool
@@ -61,35 +53,13 @@ func (t *jwtAuth0Claims) Expired() bool {
 	now := jwt.TimeFunc().UTC().Unix()
 	return now >= t.ExpiresAt
 }
-//
-//func (t *jwtAuth0Claims) AuthToken() string {
-//	// TODO: implement
-//	glog.Error("Function jwtAuth0Claims.AuthToken called - needs implementation.")
-//	return ""
-//}
-//
-//func (t *jwtAuth0Claims) RestToken() string {
-//	// TODO: implement
-//	glog.Error("Function jwtAuth0Claims.RestToken called - needs implementation.")
-//	return ""
-//}
-
-
-//func (t *jwtAuth0Claims) ValidateRequestHash(r *http.Request) bool {
-//	// TODO: implement properly
-//	hash := GetRequestHash(r)
-//	return bytes.Equal(t.ReqHash, hash)
-//	glog.Error("Function jwtAuth0Claims.ValidateRequestHash called - needs implementation. (returns true for now, which is INSECURE)")
-//	return true
-//}
 
 func (t *jwtAuth0Claims) HasAdminAccess() bool {
-	//glog.V(0).Info("Checking Admin Access...")
+	//TODO: make group membership a config setting
 	if !utils.StringInSlice("All Zenoss Employees", t.Groups) {
 		glog.Warning("Auth0 Admin access denied - 'All Zenoss Employess' not found in Groups.")
 		return false
 	}
-	//glog.V(0).Info("... Admin access granted.")
 	return true
 }
 
@@ -107,13 +77,14 @@ type Jwks struct {
 }
 
 /*
-TODO: Look into caching this, so we're not making a web request every time an authentication
+TODO: Cache this, so we're not making a web request every time an authentication
 request comes in.
 */
 func getPemCert(token *jwt.Token) ([]byte, error) {
-	//glog.V(0).Info("getPemCert() entry")
 	cert := ""
-	resp, err := http.Get("https://zenoss-dev.auth0.com/.well-known/jwks.json")
+	opts := config.GetOptions()
+	auth0Domain := opts.Auth0Domain
+	resp, err := http.Get(fmt.Sprintf("https://%s/.well-known/jwks.json", auth0Domain))
 
 	if err != nil {
 		glog.Warning("error getting well-known jwks: ", err)

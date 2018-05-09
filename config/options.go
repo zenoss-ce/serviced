@@ -127,6 +127,8 @@ type Options struct {
 	StorageMinimumFreeSpace    string            // The amount of space the emergency shutdown algorithm should reserve when deciding to shut down
 	BackupEstimatedCompression float64           // Best guess for tgz compression ratio (uncompressed size / compressed size) used to determine whether sufficient disk space is available for taking a backup
 	BackupMinOverhead          string            // Warn user if estimated backup size would leave less than this amount of space free
+	Auth0Domain                string            // Domain configured for tenant in Auth0. Ref: https://auth0.com/docs/getting-started/the-basics#domain
+	Auth0Audience              string            // Audience configured for application (?) in Auth0
 }
 
 // GetOptions returns a COPY of the global options struct
