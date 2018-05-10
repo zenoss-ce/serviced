@@ -1,3 +1,5 @@
+/* globals Config */
+
 (function () {
 
     'use strict';
@@ -16,45 +18,13 @@
                 function login() {
                     angularAuth0.authorize();
                 }
-                //
-                // function handleAuthentication() {
-                //     angularAuth0.parseHash(function (err, authResult) {
-                //         if (authResult && authResult.accessToken && authResult.idToken) {
-                //             setSession(authResult);
-                //             // $state.go('home');
-                //         } else if (err) {
-                //             $timeout(function () {
-                //                 // $state.go('home');
-                //             });
-                //             console.log(err);
-                //             alert('Error: ' + err.error + '. Check the console for further details.');
-                //         }
-                //     });
-                // }
-
-                // function setSession(authResult) {
-                //     // Set the time that the access token will expire at
-                //     let expiresAt = JSON.stringify((authResult.expiresIn * 1000) + new Date().getTime());
-                //     localStorage.setItem('access_token', authResult.accessToken);
-                //     localStorage.setItem('id_token', authResult.idToken);
-                //     localStorage.setItem('expires_at', expiresAt);
-                // }
 
                 function logout() {
                     // Remove tokens and expiry time from localStorage
                     localStorage.removeItem('access_token');
                     localStorage.removeItem('id_token');
                     localStorage.removeItem('expires_at');
-                    // $state.go('home');
                 }
-
-                //
-                // function isAuthenticated() {
-                //     // Check whether the current time is past the
-                //     // access token's expiry time
-                //     let expiresAt = JSON.parse(localStorage.getItem('expires_at'));
-                //     return new Date().getTime() < expiresAt;
-                // }
 
                 /*
                  * Check whether the user appears to be logged in. Update path if not.
@@ -67,7 +37,7 @@
                     if (at && it) {
                         $scope.loggedIn = true;
                         $scope.user = {
-                            username: "succesful auth0 login"
+                            username: "successful auth0 login"
                         };
                         return;
                     }
@@ -75,9 +45,6 @@
                 }
 
                 return {
-                    // handleAuthentication: handleAuthentication,
-                    // isAuthenticated: isAuthenticated,
-
                     /// methods in authService.js:
                     setLoggedIn: setLoggedIn,
                     login: login,
@@ -94,10 +61,10 @@
     function config(angularAuth0Provider) {
         // Initialization for the angular-auth0 library
         angularAuth0Provider.init({
-            domain: Config.Auth0Domain,
-            clientID: Config.Auth0ClientID,
+            domain: window.Config.Auth0Domain,
+            clientID: window.Config.Auth0ClientID,
             redirectUri: window.location.origin + "/static/auth0callback.html",
-            audience: Config.Auth0Audience,
+            audience: window.Config.Auth0Audience,
             responseType: "token id_token",
             scope: 'openid profile read:messages'
         });
