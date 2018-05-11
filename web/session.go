@@ -30,10 +30,12 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"net/http/httputil"
 )
 
 const sessionCookie = "ZCPToken"
 const usernameCookie = "ZUsername"
+const auth0TokenCookie = "auth0AccessToken"
 
 var adminGroup = "sudo"
 
@@ -171,13 +173,37 @@ func loginWithAuth0TokenOK(r *rest.Request, token string) bool {
 	}
 }
 
-func loginOK(r *rest.Request) bool {
-	//glog.V(0).Info("loginOK()")
-	//requestDump, err := httputil.DumpRequest(r.Request, true)
-	//if err != nil {
-	//	glog.Error(err)
-	//}
-	//glog.V(0).Info(string(requestDump))
+func loginWithAuth0CookieOk(r *rest.Request) bool {
+	glog.V(0).Info("loginWithBasicAuthOK()")
+	cookie, err := r.Request.Cookie(auth0TokenCookie)
+	if err != nil {
+		glog.V(1).Info("Error getting cookie ", err)
+		return false
+	}
+	token := cookie.Value
+
+	// TODO: look into putting this in a separate function - duplicated in LoginWithAuth0TokenOK()
+	auth0Token, err := auth.ParseAuth0Token(token)
+	if err != nil {
+		msg := "Unable to parse rest token"
+		plog.WithError(err).WithField("url", r.URL.String()).Debug(msg)
+		return false
+	} else {
+		if !auth0Token.HasAdminAccess() {
+			msg := "Could not login with rest token. Insufficient permissions."
+			plog.WithField("url", r.URL.String()).Debug(msg)
+			return false
+		} else {
+			return true
+		}
+	}
+}
+
+func loginOK(w *rest.ResponseWriter, r *rest.Request) bool {
+	requestDump, err := httputil.DumpRequest(r.Request, true)
+	if err != nil {
+		glog.Error(err)
+	}
 	token, tErr := auth.ExtractRestToken(r.Request)
 	if tErr != nil { // There is a token in the header but we could not extract it
 		msg := "Unable to extract auth token from header"
@@ -186,8 +212,17 @@ func loginOK(r *rest.Request) bool {
 	} else if token != "" {
 		// try Auth0 login first, then old token login
 		if loginWithAuth0TokenOK(r, token)  {
-			glog.V(0).Info("Logged in with Auth0.")
-			//glog.V(0).Info(string(requestDump))
+			// Set cookie with token, so api calls can work.
+			// Secure and HttpOnly flags are important to mitigate XSRF attack risk.
+			http.SetCookie(
+				w.ResponseWriter,
+				&http.Cookie{
+					Name:     auth0TokenCookie,
+					Value:    token,
+					Path:     "/",
+					Secure:   true,
+					HttpOnly: true,
+				})
 			return true
 		}
 		if loginWithTokenOK(r, token) {
@@ -196,6 +231,12 @@ func loginOK(r *rest.Request) bool {
 		}
 		return false
 	} else {
+		//glog.V(0).Info("Trying login with Auth0 from cookie.")
+		glog.V(0).Info("Request dump: ", string(requestDump))
+		if loginWithAuth0CookieOk(r) {
+			glog.V(0).Info("Logged in with Auth0 via cookie.")
+			return true
+		}
 		glog.V(0).Info("Trying login With Basic Auth.")
 		//glog.V(0).Info("Request dump: ", string(requestDump))
 		return loginWithBasicAuthOK(r)

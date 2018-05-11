@@ -32,7 +32,7 @@ func (t *jwtAuth0Claims) Valid() error {
 	if t.Issuer != expectedIssuer {
 		return ErrAuth0TokenBadIssuer
 	}
-	//TODO: create a new API in Auth0 for CC with appropriate Audience field, and update Auth0Audience value in configuration.) https://manage.auth0.com/#/apis
+	//TODO: create a new API definition in Auth0 for CC with appropriate Audience field, and update Auth0Audience value in configuration.) https://manage.auth0.com/#/apis
 	if !utils.StringInSlice(opts.Auth0Audience, t.Audience) {
 		return ErrAuth0TokenBadAudience
 	}

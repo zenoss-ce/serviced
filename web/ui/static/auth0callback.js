@@ -22,4 +22,3 @@ webAuth.parseHash(function (err, result) {
        window.location = window.location.origin;
    }
 });
-

@@ -257,7 +257,7 @@ func routeToInternalServiceProxy(path string, target string, requiresAuth bool, 
 	handlerFunc := func(w *rest.ResponseWriter, r *rest.Request) {
 		logger.Info("handler Func from routeToInternalServiceProxy() called.")
 		// All proxied requests should be authenticated first
-		if requiresAuth && !loginOK(r) {
+		if requiresAuth && !loginOK(w, r) {
 			//TODO: INVESTIGATE HERE FOR KIBANA / METRICS issues
 			restUnauthorized(w)
 			return
@@ -290,7 +290,7 @@ func (sc *ServiceConfig) unAuthorizedClient(realfunc handlerClientFunc) handlerF
 func (sc *ServiceConfig) authorizedClient(realfunc handlerClientFunc) handlerFunc {
 	return func(w *rest.ResponseWriter, r *rest.Request) {
 		plog.Info("authorizedClient handler called")
-		if !loginOK(r) {
+		if !loginOK(w, r) {
 			restUnauthorized(w)
 			return
 		}
@@ -349,9 +349,9 @@ func (sc *ServiceConfig) newRequestHandler(check checkFunc, realfunc ctxhandlerF
 
 func (sc *ServiceConfig) checkAuth(realfunc ctxhandlerFunc) handlerFunc {
 	check := func(w *rest.ResponseWriter, r *rest.Request) bool {
-		logger := plog.WithField("bindport", sc.bindPort)
-		logger.Info("Starting checkAuth")
-		if !loginOK(r) {
+		//logger := plog.WithField("bindport", sc.bindPort)
+		//logger.Info("Starting checkAuth")
+		if !loginOK(w, r) {
 			restUnauthorized(w)
 			return false
 		}

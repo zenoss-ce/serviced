@@ -1,5 +1,3 @@
-/* globals Config */
-
 (function () {
 
     'use strict';
