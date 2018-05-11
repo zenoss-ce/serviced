@@ -255,10 +255,8 @@ func routeToInternalServiceProxy(path string, target string, requiresAuth bool, 
 	}
 	// Wrap the normal http.Handler in a rest.handlerFunc
 	handlerFunc := func(w *rest.ResponseWriter, r *rest.Request) {
-		logger.Info("handler Func from routeToInternalServiceProxy() called.")
 		// All proxied requests should be authenticated first
 		if requiresAuth && !loginOK(w, r) {
-			//TODO: INVESTIGATE HERE FOR KIBANA / METRICS issues
 			restUnauthorized(w)
 			return
 		}

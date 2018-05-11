@@ -76,33 +76,38 @@ type Jwks struct {
 	Keys []JSONWebkeys `json:"keys"`
 }
 
+var auth0Jwks *Jwks = nil
+
 /*
 TODO: Cache this, so we're not making a web request every time an authentication
 request comes in.
 */
 func getPemCert(token *jwt.Token) ([]byte, error) {
 	cert := ""
-	opts := config.GetOptions()
-	auth0Domain := opts.Auth0Domain
-	resp, err := http.Get(fmt.Sprintf("https://%s/.well-known/jwks.json", auth0Domain))
+	if auth0Jwks == nil {
+		glog.V(0).Info("Fetching jwks key from auth0")
+		opts := config.GetOptions()
+		auth0Domain := opts.Auth0Domain
+		resp, err := http.Get(fmt.Sprintf("https://%s/.well-known/jwks.json", auth0Domain))
 
-	if err != nil {
-		glog.Warning("error getting well-known jwks: ", err)
-		return []byte(cert), err
+		if err != nil {
+			glog.Warning("error getting well-known jwks: ", err)
+			return []byte(cert), err
+		}
+		defer resp.Body.Close()
+
+		var jwks = Jwks{}
+		err = json.NewDecoder(resp.Body).Decode(&jwks)
+
+		if err != nil {
+			glog.Warning("error decoding PEM Certificate: ", err)
+			return []byte(cert), err
+		}
+		auth0Jwks = &jwks
 	}
-	defer resp.Body.Close()
-
-	var jwks = Jwks{}
-	err = json.NewDecoder(resp.Body).Decode(&jwks)
-
-	if err != nil {
-		glog.Warning("error decoding PEM Certificate: ", err)
-		return []byte(cert), err
-	}
-
-	x5c := jwks.Keys[0].X5c
+	x5c := auth0Jwks.Keys[0].X5c
 	for k, v := range x5c {
-		if token.Header["kid"] == jwks.Keys[k].Kid {
+		if token.Header["kid"] == auth0Jwks.Keys[k].Kid {
 			cert = "-----BEGIN CERTIFICATE-----\n" + v + "\n-----END CERTIFICATE-----"
 		}
 	}
@@ -146,7 +151,6 @@ func ParseAuth0Token(token string) (Auth0Token, error) {
 	claims := &jwtAuth0Claims{}
 	identity := &jwtIdentity{}
 	parsed, err := jwt.ParseWithClaims(token, claims, func (token *jwt.Token) (interface{}, error) {
-		//glog.V(0).Info("in callback inside jwt.ParseWithClaims()")
 		// Validate the algorithm matches the key
 		if _, ok := token.Method.(*jwt.SigningMethodRSA); !ok {
 			glog.Warning("error getting RSA key from PEM: ", ErrInvalidSigningMethod)
@@ -159,50 +163,40 @@ func ParseAuth0Token(token string) (Auth0Token, error) {
 			glog.Warning("error getting RSA key from PEM: ", err)
 			return nil, fmt.Errorf("error getting RSA key from PEM: %v\n", err)
 		}
-		//glog.V(0).Info("ParseAuth0Token(): returning key: ", fmt.Sprintf("%+v", key))
 		return key, nil
 	})
 	if err != nil {
 		if verr, ok := err.(*jwt.ValidationError); ok {
 			glog.Warning("Validation error from jwt.ParseWIthClaims(): ", verr)
 			if verr.Inner != nil && (verr.Inner == ErrIdentityTokenExpired || verr.Inner == ErrIdentityTokenBadSig) {
-				glog.Warning("ParseAuth0Token: nope: ", verr.Inner)
 				return nil, verr.Inner
 			}
 			if verr.Errors&jwt.ValidationErrorExpired != 0 || verr.Inner != nil && verr.Inner == ErrRestTokenExpired {
-				glog.Warning("ParseAuth0Token: nope: ", ErrRestTokenExpired)
 				return nil, ErrRestTokenExpired
 			}
 			if verr.Errors&(jwt.ValidationErrorSignatureInvalid|jwt.ValidationErrorUnverifiable) != 0 {
-				glog.Warning("ParseAuth0Token: nope: ", ErrRestTokenBadSig)
 				return nil, ErrRestTokenBadSig
 			}
 			if verr.Errors&(jwt.ValidationErrorMalformed) != 0 {
-				glog.Warning("ParseAuth0Token: nope: ", ErrBadRestToken)
 				return nil, ErrBadRestToken
 			}
 			if verr.Inner != nil {
-				glog.Warning("ParseAuth0Token: nope: ", verr.Inner)
 				return nil, verr.Inner
 			}
 			if verr != nil {
-				glog.Warning("ParseAuth0Token: nope: ", verr)
 				return nil, verr
 			}
 		}
-		glog.Warning("ParseAuth0Token: nope: ", err)
 		return nil, err
 	}
-	//glog.V(0).Info("ParseAuth0Token: so far, so good...")
 	if claims, ok := parsed.Claims.(*jwtAuth0Claims); ok && parsed.Valid {
 		restToken := &jwtAuth0RestToken{}
 		restToken.jwtAuth0Claims = claims
 		restToken.authIdentity = identity
 		restToken.restToken = token
-		//glog.V(0).Info("ParseAuth0Token: success!")
 		return restToken, nil
 	}
-	glog.Warning("ParseAuth0Token: womp, womp!: ", ErrIdentityTokenInvalid)
+	glog.Warning("ParseAuth0Token: ", ErrIdentityTokenInvalid)
 	return nil, ErrIdentityTokenInvalid
 }
 

@@ -30,7 +30,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-	"net/http/httputil"
 )
 
 const sessionCookie = "ZCPToken"
@@ -174,7 +173,6 @@ func loginWithAuth0TokenOK(r *rest.Request, token string) bool {
 }
 
 func loginWithAuth0CookieOk(r *rest.Request) bool {
-	glog.V(0).Info("loginWithBasicAuthOK()")
 	cookie, err := r.Request.Cookie(auth0TokenCookie)
 	if err != nil {
 		glog.V(1).Info("Error getting cookie ", err)
@@ -200,10 +198,6 @@ func loginWithAuth0CookieOk(r *rest.Request) bool {
 }
 
 func loginOK(w *rest.ResponseWriter, r *rest.Request) bool {
-	requestDump, err := httputil.DumpRequest(r.Request, true)
-	if err != nil {
-		glog.Error(err)
-	}
 	token, tErr := auth.ExtractRestToken(r.Request)
 	if tErr != nil { // There is a token in the header but we could not extract it
 		msg := "Unable to extract auth token from header"
@@ -213,7 +207,7 @@ func loginOK(w *rest.ResponseWriter, r *rest.Request) bool {
 		// try Auth0 login first, then old token login
 		if loginWithAuth0TokenOK(r, token)  {
 			// Set cookie with token, so api calls can work.
-			// Secure and HttpOnly flags are important to mitigate XSRF attack risk.
+			// Secure and HttpOnly flags are important to mitigate CSRF/XSRF attack risk.
 			http.SetCookie(
 				w.ResponseWriter,
 				&http.Cookie{
@@ -231,14 +225,9 @@ func loginOK(w *rest.ResponseWriter, r *rest.Request) bool {
 		}
 		return false
 	} else {
-		//glog.V(0).Info("Trying login with Auth0 from cookie.")
-		glog.V(0).Info("Request dump: ", string(requestDump))
 		if loginWithAuth0CookieOk(r) {
-			glog.V(0).Info("Logged in with Auth0 via cookie.")
 			return true
 		}
-		glog.V(0).Info("Trying login With Basic Auth.")
-		//glog.V(0).Info("Request dump: ", string(requestDump))
 		return loginWithBasicAuthOK(r)
 	}
 }
