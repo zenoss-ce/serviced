@@ -194,6 +194,7 @@ func GetDefaultOptions(cfg utils.ConfigReader) config.Options {
 		BackupMinOverhead:          cfg.StringVal("BACKUP_MIN_OVERHEAD", "0G"),
 		Auth0Domain:                cfg.StringVal("AUTH0_DOMAIN", "zenoss-dev.auth0.com"),
 		Auth0Audience:              cfg.StringVal("AUTH0_AUDIENCE", "https://dev.zing.ninja"),
+		Auth0Group:                 cfg.StringVal("AUTH0_GROUP", "All Zenoss Employees"),
 	}
 
 	options.Endpoint = cfg.StringVal("ENDPOINT", "")

@@ -56,8 +56,10 @@ func (t *jwtAuth0Claims) Expired() bool {
 
 func (t *jwtAuth0Claims) HasAdminAccess() bool {
 	//TODO: make group membership a config setting
-	if !utils.StringInSlice("All Zenoss Employees", t.Groups) {
-		glog.Warning("Auth0 Admin access denied - 'All Zenoss Employees' not found in Groups.")
+	opts := config.GetOptions()
+	auth0Group := opts.Auth0Group
+	if !utils.StringInSlice(auth0Group, t.Groups) {
+		glog.Warning("Auth0 Admin access denied - '" + auth0Group + "' not found in Groups.")
 		return false
 	}
 	return true
@@ -78,10 +80,7 @@ type Jwks struct {
 
 var auth0Jwks *Jwks = nil
 
-/*
-TODO: Cache this, so we're not making a web request every time an authentication
-request comes in.
-*/
+
 func getPemCert(token *jwt.Token) ([]byte, error) {
 	cert := ""
 	if auth0Jwks == nil {

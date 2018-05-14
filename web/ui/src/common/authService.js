@@ -45,8 +45,8 @@
                     success(function(data, status) {
                         window.sessionStorage.removeItem("auth0AccessToken");
                         window.sessionStorage.removeItem("auth0IDToken");
-                        // On successful logout, redirect to /login
-                        $location.path('/login');
+                        // On successful logout, redirect to /
+                        $location.path('/');
                     }).
                     error(function(data, status) {
                         // On failure to logout, note the error
@@ -66,21 +66,11 @@
                 if (at && it) {
                     $scope.loggedIn = true;
                     $scope.user = {
-                        username: "succesful auth0 login"
+                        username: "successful auth0 login"
                     };
                     return;
                 }
                 utils.unauthorized($location);
-                //  debugger;
-                // $scope.dev = $cookieStore.get("ZDevMode");
-                // if (loggedIn || $cookies.get("ZCPToken")) {
-                //     $scope.loggedIn = true;
-                //     $scope.user = {
-                //         username: $cookies.get("ZUsername")
-                //     };
-                //     return;
-                // }
-                // utils.unauthorized($location);
             }
         };
     }]);

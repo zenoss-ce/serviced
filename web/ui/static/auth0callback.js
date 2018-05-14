@@ -5,7 +5,7 @@ var webAuth = new auth0.WebAuth({
     redirectUri: window.location + "/auth0callback.html",
     audience: Config.Auth0Audience,
     responseType: "token id_token",
-    scope: 'openid profile read:messages'
+    scope: Config.Auth0Scope
 });
 
 

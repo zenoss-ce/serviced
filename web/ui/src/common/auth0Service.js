@@ -64,7 +64,7 @@
             redirectUri: window.location.origin + "/static/auth0callback.html",
             audience: window.Config.Auth0Audience,
             responseType: "token id_token",
-            scope: 'openid profile read:messages'
+            scope: window.Config.Auth0Scope,
         });
 
     }
