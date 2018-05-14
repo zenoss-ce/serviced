@@ -237,6 +237,7 @@ func loginOK(w *rest.ResponseWriter, r *rest.Request) bool {
  */
 func restLogout(w *rest.ResponseWriter, r *rest.Request) {
 	glog.V(0).Info("restLogout() called.")
+	// Read session cookie and delete session
 	cookie, err := r.Request.Cookie(sessionCookie)
 	if err != nil {
 		glog.V(0).Info("Unable to read session cookie")
@@ -245,17 +246,24 @@ func restLogout(w *rest.ResponseWriter, r *rest.Request) {
 		glog.V(0).Infof("Deleted session %s for explicit logout", cookie.Value)
 	}
 
+	// Blank out all login cookies
+	writeBlankCookie(w, r, auth0TokenCookie)
+	writeBlankCookie(w, r, sessionCookie)
+	writeBlankCookie(w, r, usernameCookie)
+	w.WriteJson(&simpleResponse{"Logged out", loginLink()})
+}
+
+func writeBlankCookie(w *rest.ResponseWriter, r *rest.Request, cname string) {
 	http.SetCookie(
 		w.ResponseWriter,
 		&http.Cookie{
-			Name:   sessionCookie,
+			Name:   cname,
 			Value:  "",
 			Path:   "/",
 			MaxAge: -1,
 		})
-
-	w.WriteJson(&simpleResponse{"Logged out", loginLink()})
 }
+
 
 func restLoginWithBasicAuth(w *rest.ResponseWriter, r *rest.Request, ctx *requestContext) {
 	glog.V(0).Info("restLoginWithBasicAuth()")

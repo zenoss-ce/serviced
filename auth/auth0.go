@@ -55,7 +55,6 @@ func (t *jwtAuth0Claims) Expired() bool {
 }
 
 func (t *jwtAuth0Claims) HasAdminAccess() bool {
-	//TODO: make group membership a config setting
 	opts := config.GetOptions()
 	auth0Group := opts.Auth0Group
 	if !utils.StringInSlice(auth0Group, t.Groups) {
