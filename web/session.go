@@ -149,25 +149,20 @@ func loginWithTokenOK(r *rest.Request, token string) bool {
 	}
 }
 
-func loginWithAuth0TokenOK(r *rest.Request, token string) bool {
+func loginWithAuth0TokenOK(r *rest.Request, token string) (auth.Auth0Token, bool) {
 	//glog.V(0).Info("loginWithAuth0TokenOK()")
 	auth0Token, err := auth.ParseAuth0Token(token)
 	if err != nil {
 		msg := "Unable to parse rest token"
 		plog.WithError(err).WithField("url", r.URL.String()).Debug(msg)
-		return false
+		return nil, false
 	} else {
-		//if !auth0Token.ValidateRequestHash(r.Request) {
-		//	msg := "Could not login with rest token. Request signature does not match token."
-		//	plog.WithField("url", r.URL.String()).Debug(msg)
-		//	return false
-		//} else
 		if !auth0Token.HasAdminAccess() {
 			msg := "Could not login with rest token. Insufficient permissions."
 			plog.WithField("url", r.URL.String()).Debug(msg)
-			return false
+			return nil, false
 		} else {
-			return true
+			return auth0Token, true
 		}
 	}
 }
@@ -205,17 +200,33 @@ func loginOK(w *rest.ResponseWriter, r *rest.Request) bool {
 		return false
 	} else if token != "" {
 		// try Auth0 login first, then old token login
-		if loginWithAuth0TokenOK(r, token)  {
+		if parsed, ok := loginWithAuth0TokenOK(r, token); ok {
 			// Set cookie with token, so api calls can work.
 			// Secure and HttpOnly flags are important to mitigate CSRF/XSRF attack risk.
+			exp := parsed.Expiration()
+			expireTime := time.Unix(exp, 0)
+
 			http.SetCookie(
 				w.ResponseWriter,
 				&http.Cookie{
 					Name:     auth0TokenCookie,
 					Value:    token,
 					Path:     "/",
+					Expires:  expireTime,
 					Secure:   true,
 					HttpOnly: true,
+				})
+
+			// not setting secure, httponly on name cookie - this should be for display only
+			http.SetCookie(
+				w.ResponseWriter,
+				&http.Cookie{
+					Name:     usernameCookie,
+					Value:    parsed.User(),
+					Path:     "/",
+					Expires:  expireTime,
+					Secure:   false,
+					HttpOnly: false,
 				})
 			return true
 		}
@@ -263,7 +274,6 @@ func writeBlankCookie(w *rest.ResponseWriter, r *rest.Request, cname string) {
 			MaxAge: -1,
 		})
 }
-
 
 func restLoginWithBasicAuth(w *rest.ResponseWriter, r *rest.Request, ctx *requestContext) {
 	glog.V(0).Info("restLoginWithBasicAuth()")
@@ -333,7 +343,7 @@ func restLogin(w *rest.ResponseWriter, r *rest.Request, ctx *requestContext) {
 		plog.WithError(tErr).Warning(msg)
 		writeJSON(w, &simpleResponse{msg, loginLink()}, http.StatusUnauthorized)
 	} else if token != "" {
-		if loginWithAuth0TokenOK(r, token) {
+		if _, ok := loginWithAuth0TokenOK(r, token); ok {
 			w.WriteJson(&simpleResponse{"Accepted", homeLink()})
 		} else if loginWithTokenOK(r, token) {
 			w.WriteJson(&simpleResponse{"Accepted", homeLink()})

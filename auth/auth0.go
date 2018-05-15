@@ -12,6 +12,7 @@ import (
 	"encoding/pem"
 	"crypto/x509"
 	"github.com/control-center/serviced/config"
+	"strings"
 )
 
 type jwtAuth0Claims struct {
@@ -41,6 +42,8 @@ func (t *jwtAuth0Claims) Valid() error {
 
 type Auth0Token interface {
 	HasAdminAccess() bool
+	User() string
+	Expiration() int64
 }
 
 type jwtAuth0RestToken struct {
@@ -52,6 +55,17 @@ type jwtAuth0RestToken struct {
 func (t *jwtAuth0Claims) Expired() bool {
 	now := jwt.TimeFunc().UTC().Unix()
 	return now >= t.ExpiresAt
+}
+
+func (t *jwtAuth0Claims) Expiration() int64 {
+	return t.ExpiresAt
+}
+
+func (t *jwtAuth0Claims) User() string {
+	// Auth0 returns username in the subj field in the form <source>|<username>.
+	// Strip off the source and only return the username.
+	fields := strings.Split(t.Subject, "|")
+	return fields[len(fields)-1]
 }
 
 func (t *jwtAuth0Claims) HasAdminAccess() bool {
