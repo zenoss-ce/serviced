@@ -50,10 +50,10 @@
                     success(function(data, status) {
                         window.sessionStorage.removeItem("auth0AccessToken");
                         window.sessionStorage.removeItem("auth0IDToken");
-                        let redirectloc = '/'
+                        let redirectloc = '/';
                         if (utils.useAuth0()) {
                             console.info('window location hash' + window.location.hash);
-                            let returnloc = encodeURIComponent(window.location.origin + '/')
+                            let returnloc = encodeURIComponent(window.location.origin + '/');
                             redirectloc = 'https://zenoss-dev.auth0.com/v2/logout' +
                                 '?returnTo=' + returnloc +
                                 '&client_id=' + window.Config.Auth0ClientID;
