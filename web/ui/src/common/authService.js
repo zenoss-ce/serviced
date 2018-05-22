@@ -4,9 +4,9 @@
 (function(){
     "use strict";
 
-    angular.module("authService", [])
-    .factory("authService", ["$cookies", "$cookieStore", "$location", "$http", "$notification", "miscUtils", "log",
-    function($cookies, $cookieStore, $location, $http, $notification, utils, log) {
+    angular.module("authService", ["auth0.auth0"])
+    .factory("authService", ["angularAuth0", "$cookies", "$cookieStore", "$location", "$http", "$notification", "miscUtils", "log",
+    function(angularAuth0, $cookies, $cookieStore, $location, $http, $notification, utils, log) {
         var loggedIn = false;
         var userName = null;
 
@@ -23,6 +23,11 @@
              * @param {boolean} truth Whether the user is logged in.
              */
             setLoggedIn: setLoggedIn,
+
+            auth0login: function () {
+                angularAuth0.authorize();
+            },
+
 
             login: function(creds, successCallback, failCallback){
                 $http.post('/login', creds).
@@ -45,8 +50,16 @@
                     success(function(data, status) {
                         window.sessionStorage.removeItem("auth0AccessToken");
                         window.sessionStorage.removeItem("auth0IDToken");
+                        let redirectloc = '/'
+                        if (utils.useAuth0()) {
+                            console.info('window location hash' + window.location.hash);
+                            let returnloc = encodeURIComponent(window.location.origin + '/')
+                            redirectloc = 'https://zenoss-dev.auth0.com/v2/logout' +
+                                '?returnTo=' + returnloc +
+                                '&client_id=' + window.Config.Auth0ClientID;
+                        }
                         // On successful logout, redirect to /
-                        $location.path('/');
+                        window.location = redirectloc;
                     }).
                     error(function(data, status) {
                         // On failure to logout, note the error
@@ -61,17 +74,44 @@
              * @param {object} scope The 'loggedIn' property will be set if true
              */
             checkLogin: function($scope) {
-                var at = window.sessionStorage.getItem("auth0AccessToken");
-                var it  = window.sessionStorage.getItem("auth0IDToken");
-                if (at && it) {
-                    $scope.loggedIn = true;
-                    $scope.user = {
-                        username: "successful auth0 login"
-                    };
-                    return;
+                if (utils.useAuth0()) {
+                    var at = window.sessionStorage.getItem("auth0AccessToken");
+                    var it = window.sessionStorage.getItem("auth0IDToken");
+                    if (at && it) {
+                        $scope.loggedIn = true;
+                        $scope.user = {
+                            username: "successful auth0 login"
+                        };
+                        return;
+                    }
+                } else {
+                    $scope.dev = $cookieStore.get("ZDevMode");
+                    if (loggedIn || $cookies.get("ZCPToken")) {
+                        $scope.loggedIn = true;
+                        $scope.user = {
+                            username: $cookies.get("ZUsername")
+                        };
+                        return;
+                    }
                 }
                 utils.unauthorized($location);
             }
         };
-    }]);
+    }]).config(config);
+
+    config.$inject = [
+        'angularAuth0Provider'
+    ];
+
+    function config(angularAuth0Provider) {
+        // Initialization for the angular-auth0 library
+        angularAuth0Provider.init({
+            domain: window.Config.Auth0Domain,
+            clientID: window.Config.Auth0ClientID,
+            redirectUri: window.location.origin + "/static/auth0callback.html",
+            audience: window.Config.Auth0Audience,
+            responseType: "token id_token",
+            scope: window.Config.Auth0Scope,
+        });
+    }
 })();

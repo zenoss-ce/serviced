@@ -104,7 +104,6 @@ func purgeOldsessionTs() {
  * This function should be called by any secure REST resource
  */
 func loginWithBasicAuthOK(r *rest.Request) bool {
-	glog.V(0).Info("loginWithBasicAuthOK()")
 	cookie, err := r.Request.Cookie(sessionCookie)
 	if err != nil {
 		glog.V(1).Info("Error getting cookie ", err)
@@ -128,7 +127,6 @@ func loginWithBasicAuthOK(r *rest.Request) bool {
 }
 
 func loginWithTokenOK(r *rest.Request, token string) bool {
-	glog.V(0).Info("loginWithTokenOK()")
 	restToken, err := auth.ParseRestToken(token)
 	if err != nil {
 		msg := "Unable to parse rest token"
@@ -150,15 +148,14 @@ func loginWithTokenOK(r *rest.Request, token string) bool {
 }
 
 func loginWithAuth0TokenOK(r *rest.Request, token string) (auth.Auth0Token, bool) {
-	//glog.V(0).Info("loginWithAuth0TokenOK()")
 	auth0Token, err := auth.ParseAuth0Token(token)
 	if err != nil {
-		msg := "Unable to parse rest token"
+		msg := "Unable to parse auth0 rest token"
 		plog.WithError(err).WithField("url", r.URL.String()).Debug(msg)
 		return nil, false
 	} else {
 		if !auth0Token.HasAdminAccess() {
-			msg := "Could not login with rest token. Insufficient permissions."
+			msg := "Could not login with auth0 rest token. Insufficient permissions."
 			plog.WithField("url", r.URL.String()).Debug(msg)
 			return nil, false
 		} else {
@@ -174,22 +171,8 @@ func loginWithAuth0CookieOk(r *rest.Request) bool {
 		return false
 	}
 	token := cookie.Value
-
-	// TODO: look into putting this in a separate function - duplicated in LoginWithAuth0TokenOK()
-	auth0Token, err := auth.ParseAuth0Token(token)
-	if err != nil {
-		msg := "Unable to parse rest token"
-		plog.WithError(err).WithField("url", r.URL.String()).Debug(msg)
-		return false
-	} else {
-		if !auth0Token.HasAdminAccess() {
-			msg := "Could not login with rest token. Insufficient permissions."
-			plog.WithField("url", r.URL.String()).Debug(msg)
-			return false
-		} else {
-			return true
-		}
-	}
+	_, result := loginWithAuth0TokenOK(r, token)
+	return result
 }
 
 func loginOK(w *rest.ResponseWriter, r *rest.Request) bool {
@@ -198,8 +181,8 @@ func loginOK(w *rest.ResponseWriter, r *rest.Request) bool {
 		msg := "Unable to extract auth token from header"
 		plog.WithError(tErr).WithField("url", r.URL.String()).Debug(msg)
 		return false
-	} else if token != "" {
-		// try Auth0 login first, then old token login
+	} else if token != "null" && token != "" {
+		// try Auth0 login first. If that fails, try token login
 		if parsed, ok := loginWithAuth0TokenOK(r, token); ok {
 			// Set cookie with token, so api calls can work.
 			// Secure and HttpOnly flags are important to mitigate CSRF/XSRF attack risk.
@@ -231,7 +214,6 @@ func loginOK(w *rest.ResponseWriter, r *rest.Request) bool {
 			return true
 		}
 		if loginWithTokenOK(r, token) {
-			glog.V(0).Info("Logged in with Token.")
 			return true
 		}
 		return false
@@ -247,14 +229,14 @@ func loginOK(w *rest.ResponseWriter, r *rest.Request) bool {
  * Perform logout, return JSON
  */
 func restLogout(w *rest.ResponseWriter, r *rest.Request) {
-	glog.V(0).Info("restLogout() called.")
+	glog.V(2).Info("restLogout() called.")
 	// Read session cookie and delete session
 	cookie, err := r.Request.Cookie(sessionCookie)
 	if err != nil {
-		glog.V(0).Info("Unable to read session cookie")
+		glog.V(2).Info("Unable to read session cookie")
 	} else {
 		deleteSessionT(cookie.Value)
-		glog.V(0).Infof("Deleted session %s for explicit logout", cookie.Value)
+		glog.V(2).Infof("Deleted session %s for explicit logout", cookie.Value)
 	}
 
 	// Blank out all login cookies
@@ -276,11 +258,10 @@ func writeBlankCookie(w *rest.ResponseWriter, r *rest.Request, cname string) {
 }
 
 func restLoginWithBasicAuth(w *rest.ResponseWriter, r *rest.Request, ctx *requestContext) {
-	glog.V(0).Info("restLoginWithBasicAuth()")
 	creds := login{}
+
 	err := r.DecodeJsonPayload(&creds)
 	if err != nil {
-		glog.V(1).Info("Unable to decode login payload ", err)
 		restBadRequest(w, err)
 		return
 	}
@@ -325,7 +306,6 @@ func restLoginWithBasicAuth(w *rest.ResponseWriter, r *rest.Request, ctx *reques
 				Path:   "/",
 				MaxAge: 0,
 			})
-
 		w.WriteJson(&simpleResponse{"Accepted", homeLink()})
 	} else {
 		writeJSON(w, &simpleResponse{"Login failed", loginLink()}, http.StatusUnauthorized)
@@ -336,7 +316,6 @@ func restLoginWithBasicAuth(w *rest.ResponseWriter, r *rest.Request, ctx *reques
  * Perform login, return JSON
  */
 func restLogin(w *rest.ResponseWriter, r *rest.Request, ctx *requestContext) {
-	glog.V(0).Info("restLogin()")
 	token, tErr := auth.ExtractRestToken(r.Request)
 	if tErr != nil { // There is a token in the header but we could not extract it
 		msg := "Unable to extract auth token from header"
@@ -356,16 +335,14 @@ func restLogin(w *rest.ResponseWriter, r *rest.Request, ctx *requestContext) {
 }
 
 func validateLogin(creds *login, client master.ClientInterface) bool {
-	glog.V(0).Info("validateLogin()")
+	glog.V(1).Info("validateLogin()")
 	systemUser, err := client.GetSystemUser()
 	if err == nil && creds.Username == systemUser.Name {
 		validated := cpValidateLogin(creds, client)
-
 		if validated {
 			return validated
 		}
 	}
-
 	return pamValidateLogin(creds, adminGroup)
 }
 
@@ -382,7 +359,7 @@ func cpValidateLogin(creds *login, client master.ClientInterface) bool {
 	if err != nil {
 		glog.Errorf("Unable to validate credentials %s", err)
 	}
-
+	glog.V(0).Infof("Validation result: %v", result)
 	return result
 }
 

@@ -159,7 +159,6 @@ func getRSAPublicKey(token *jwt.Token) (*rsa.PublicKey, error) {
 	but not iss or sub.
 */
 func ParseAuth0Token(token string) (Auth0Token, error) {
-	//glog.V(0).Info("ParseAuth0Token(): ", token)
 	claims := &jwtAuth0Claims{}
 	identity := &jwtIdentity{}
 	parsed, err := jwt.ParseWithClaims(token, claims, func (token *jwt.Token) (interface{}, error) {

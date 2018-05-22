@@ -284,8 +284,11 @@
 # SERVICED_GCLOUD=false
 
 # Domain configured for tenant in Auth0. Ref: https://auth0.com/docs/getting-started/the-basics#domain)
-# SERVICED_AUTH0_DOMAIN=zenoss-dev.auth0.com
+# SERVICED_AUTH0_DOMAIN=
 
 # Audience configured for application (?) in Auth0.
-# SERVICED_AUTH0_AUDIENCE=https://dev.zing.ninja
+# SERVICED_AUTH0_AUDIENCE=
+
+# Group required for Auth0 access
+# SERVICED_AUTH0_GROUP=
 
