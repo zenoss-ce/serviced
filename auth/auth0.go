@@ -1,27 +1,27 @@
 package auth
 
 import (
+	"crypto/rsa"
+	"crypto/x509"
+	"encoding/json"
+	"encoding/pem"
+	"errors"
+	"fmt"
+	"github.com/control-center/serviced/config"
+	"github.com/control-center/serviced/utils"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/zenoss/glog"
-	"fmt"
-	"github.com/control-center/serviced/utils"
 	"net/http"
-	"encoding/json"
-	"errors"
-	"crypto/rsa"
-	"encoding/pem"
-	"crypto/x509"
-	"github.com/control-center/serviced/config"
 	"strings"
 )
 
 type jwtAuth0Claims struct {
-	Issuer        string `json:"iss,omitempty"`
-	IssuedAt      int64  `json:"iat,omitempty"`
-	ExpiresAt     int64  `json:"exp,omitempty"`
-	Audience      []string `json:"aud,omitempty"`
-	Groups        []string `json:"https://zenoss.com/groups,omitempty"`
-	Subject       string   `json:"sub, omitempty"`
+	Issuer    string   `json:"iss,omitempty"`
+	IssuedAt  int64    `json:"iat,omitempty"`
+	ExpiresAt int64    `json:"exp,omitempty"`
+	Audience  []string `json:"aud,omitempty"`
+	Groups    []string `json:"https://zenoss.com/groups,omitempty"`
+	Subject   string   `json:"sub, omitempty"`
 }
 
 func (t *jwtAuth0Claims) Valid() error {
@@ -93,7 +93,6 @@ type Jwks struct {
 
 var auth0Jwks *Jwks = nil
 
-
 func getPemCert(token *jwt.Token) ([]byte, error) {
 	cert := ""
 	if auth0Jwks == nil {
@@ -152,7 +151,6 @@ func getRSAPublicKey(token *jwt.Token) (*rsa.PublicKey, error) {
 	return rsaPublicKey, nil
 }
 
-
 /*
 	See https://auth0.com/docs/api-auth/tutorials/verify-access-token for information on
 	validating auth0 tokens. Per https://jwt.io/, the jwt-go library validates exp,
@@ -161,7 +159,7 @@ func getRSAPublicKey(token *jwt.Token) (*rsa.PublicKey, error) {
 func ParseAuth0Token(token string) (Auth0Token, error) {
 	claims := &jwtAuth0Claims{}
 	identity := &jwtIdentity{}
-	parsed, err := jwt.ParseWithClaims(token, claims, func (token *jwt.Token) (interface{}, error) {
+	parsed, err := jwt.ParseWithClaims(token, claims, func(token *jwt.Token) (interface{}, error) {
 		// Validate the algorithm matches the key
 		if _, ok := token.Method.(*jwt.SigningMethodRSA); !ok {
 			glog.Warning("error getting RSA key from PEM: ", ErrInvalidSigningMethod)
@@ -210,4 +208,3 @@ func ParseAuth0Token(token string) (Auth0Token, error) {
 	glog.Warning("ParseAuth0Token: ", ErrIdentityTokenInvalid)
 	return nil, ErrIdentityTokenInvalid
 }
-

@@ -193,9 +193,9 @@ func GetDefaultOptions(cfg utils.ConfigReader) config.Options {
 		BackupEstimatedCompression: cfg.Float64Val("BACKUP_ESTIMATED_COMPRESSION", 1.0),
 		BackupMinOverhead:          cfg.StringVal("BACKUP_MIN_OVERHEAD", "0G"),
 		// Auth0 configuration parameters. Default to empty strings - must edit in serviced.conf to configure for auth0.
-		Auth0Domain:                cfg.StringVal("AUTH0_DOMAIN", ""),
-		Auth0Audience:              cfg.StringVal("AUTH0_AUDIENCE", ""),
-		Auth0Group:                 cfg.StringVal("AUTH0_GROUP", ""),
+		Auth0Domain:   cfg.StringVal("AUTH0_DOMAIN", ""),
+		Auth0Audience: cfg.StringVal("AUTH0_AUDIENCE", ""),
+		Auth0Group:    cfg.StringVal("AUTH0_GROUP", ""),
 	}
 
 	options.Endpoint = cfg.StringVal("ENDPOINT", "")

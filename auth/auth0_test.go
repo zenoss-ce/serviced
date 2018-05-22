@@ -20,8 +20,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/dgrijalva/jwt-go"
 	"github.com/control-center/serviced/auth"
+	"github.com/dgrijalva/jwt-go"
 	. "gopkg.in/check.v1"
 )
 
