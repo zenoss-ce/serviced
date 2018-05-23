@@ -94,7 +94,7 @@
         var utils = {
 
             useAuth0: function() {
-                if (window.Config.Auth0Scope && window.Config.Auth0Audience && window.Config.Auth0Domain && window.Config.Auth0ClientID) {
+                if (window.Auth0Config.Auth0Scope && window.Auth0Config.Auth0Audience && window.Auth0Config.Auth0Domain && window.Auth0Config.Auth0ClientID) {
                     return true;
                 }
                 return false;
@@ -102,7 +102,6 @@
 
             // TODO - use angular $location object to make this testable
             unauthorized: function() {
-                // debugger;
                 log.error('You don\'t appear to be logged in.');
                 // show the login page and then refresh so we lose any incorrect state. CC-279
                 if (utils.useAuth0()) {

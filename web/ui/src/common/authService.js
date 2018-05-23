@@ -52,11 +52,10 @@
                         window.sessionStorage.removeItem("auth0IDToken");
                         let redirectloc = '/';
                         if (utils.useAuth0()) {
-                            console.info('window location hash' + window.location.hash);
                             let returnloc = encodeURIComponent(window.location.origin + '/');
-                            redirectloc = 'https://zenoss-dev.auth0.com/v2/logout' +
+                            redirectloc = 'https://' + window.Auth0Config.Auth0Domain + '/v2/logout' +
                                 '?returnTo=' + returnloc +
-                                '&client_id=' + window.Config.Auth0ClientID;
+                                '&client_id=' + window.Auth0Config.Auth0ClientID;
                         }
                         // On successful logout, redirect to /
                         window.location = redirectloc;
@@ -106,12 +105,12 @@
     function config(angularAuth0Provider) {
         // Initialization for the angular-auth0 library
         angularAuth0Provider.init({
-            domain: window.Config.Auth0Domain,
-            clientID: window.Config.Auth0ClientID,
+            domain: window.Auth0Config.Auth0Domain,
+            clientID: window.Auth0Config.Auth0ClientID,
             redirectUri: window.location.origin + "/static/auth0callback.html",
-            audience: window.Config.Auth0Audience,
+            audience: window.Auth0Config.Auth0Audience,
             responseType: "token id_token",
-            scope: window.Config.Auth0Scope,
+            scope: window.Auth0Config.Auth0Scope,
         });
     }
 })();

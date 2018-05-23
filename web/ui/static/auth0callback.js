@@ -1,11 +1,11 @@
 
 var webAuth = new auth0.WebAuth({
-    domain: Config.Auth0Domain,
-    clientID: Config.Auth0ClientID,
+    domain: Auth0Config.Auth0Domain,
+    clientID: Auth0Config.Auth0ClientID,
     redirectUri: window.location + "/auth0callback.html",
-    audience: Config.Auth0Audience,
+    audience: Auth0Config.Auth0Audience,
     responseType: "token id_token",
-    scope: Config.Auth0Scope
+    scope: Auth0Config.Auth0Scope
 });
 
 

@@ -196,6 +196,8 @@ func GetDefaultOptions(cfg utils.ConfigReader) config.Options {
 		Auth0Domain:   cfg.StringVal("AUTH0_DOMAIN", ""),
 		Auth0Audience: cfg.StringVal("AUTH0_AUDIENCE", ""),
 		Auth0Group:    cfg.StringVal("AUTH0_GROUP", ""),
+		Auth0ClientID: cfg.StringVal("AUTH0_CLIENT_ID", ""),
+		Auth0Scope:    cfg.StringVal("AUTH0_SCOPE", ""),
 	}
 
 	options.Endpoint = cfg.StringVal("ENDPOINT", "")

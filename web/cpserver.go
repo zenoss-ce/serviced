@@ -35,6 +35,7 @@ import (
 	"github.com/control-center/serviced/zzk"
 	"github.com/control-center/serviced/zzk/registry"
 	"github.com/zenoss/go-json-rest"
+	"github.com/control-center/serviced/config"
 )
 
 // UIConfig contains configuration values
@@ -57,6 +58,14 @@ type ServiceConfig struct {
 	uiConfig    UIConfig
 	facade      facade.FacadeInterface
 	vhostmgr    *VHostManager
+}
+
+// Auth0Config contains configuration values pertaining to Auth0
+type Auth0Config struct {
+	Auth0ClientID string
+	Auth0Domain string
+	Auth0Audience string
+	Auth0Scope string
 }
 
 var defaultHostAlias string
@@ -89,6 +98,7 @@ func NewServiceConfig(bindPort string, agentPort string, stats bool, hostaliases
 		uiConfig:    uiCfg,
 		facade:      facade,
 	}
+
 
 	hostAddrs, err := utils.GetIPv4Addresses()
 	if err != nil {
@@ -205,6 +215,7 @@ func (sc *ServiceConfig) Serve(shutdown <-chan (interface{})) {
 
 	defaultHostAlias = sc.hostaliases[0]
 	uiConfig = sc.uiConfig
+
 
 	// FIXME: bubble up these errors to the caller
 	certFile, keyFile := GetCertFiles(sc.certPEMFile, sc.keyPEMFile)
@@ -505,4 +516,18 @@ func (sc *ServiceConfig) startVHostListener(shutdown <-chan interface{}) {
 			}
 		}
 	}()
+}
+
+// Get Auth0 Config info for UI
+func restGetAuth0Config(w *rest.ResponseWriter, r *rest.Request, ctx *requestContext) {
+	opts := config.GetOptions()
+	auth0Config := Auth0Config{
+		Auth0Scope:  opts.Auth0Scope,
+		Auth0ClientID: opts.Auth0ClientID,
+		Auth0Audience: opts.Auth0Audience,
+		Auth0Domain: opts.Auth0Domain,
+	}
+	w.Write([]byte("var Auth0Config = "))
+	w.WriteJson(auth0Config)
+	w.Write([]byte(";\n"))
 }
