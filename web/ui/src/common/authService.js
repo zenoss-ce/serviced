@@ -28,7 +28,6 @@
                 angularAuth0.authorize();
             },
 
-
             login: function(creds, successCallback, failCallback){
                 $http.post('/login', creds).
                     success(function(data, status) {

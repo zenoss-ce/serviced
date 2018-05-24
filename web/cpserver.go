@@ -99,7 +99,6 @@ func NewServiceConfig(bindPort string, agentPort string, stats bool, hostaliases
 		facade:      facade,
 	}
 
-
 	hostAddrs, err := utils.GetIPv4Addresses()
 	if err != nil {
 		logger.Fatal(err)
@@ -215,7 +214,6 @@ func (sc *ServiceConfig) Serve(shutdown <-chan (interface{})) {
 
 	defaultHostAlias = sc.hostaliases[0]
 	uiConfig = sc.uiConfig
-
 
 	// FIXME: bubble up these errors to the caller
 	certFile, keyFile := GetCertFiles(sc.certPEMFile, sc.keyPEMFile)
