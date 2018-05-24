@@ -26,6 +26,7 @@ import (
 	"strings"
 
 	"github.com/Sirupsen/logrus"
+	"github.com/control-center/serviced/config"
 	daoclient "github.com/control-center/serviced/dao/client"
 	"github.com/control-center/serviced/datastore"
 	"github.com/control-center/serviced/facade"
@@ -35,7 +36,6 @@ import (
 	"github.com/control-center/serviced/zzk"
 	"github.com/control-center/serviced/zzk/registry"
 	"github.com/zenoss/go-json-rest"
-	"github.com/control-center/serviced/config"
 )
 
 // UIConfig contains configuration values
@@ -63,9 +63,9 @@ type ServiceConfig struct {
 // Auth0Config contains configuration values pertaining to Auth0
 type Auth0Config struct {
 	Auth0ClientID string
-	Auth0Domain string
+	Auth0Domain   string
 	Auth0Audience string
-	Auth0Scope string
+	Auth0Scope    string
 }
 
 var defaultHostAlias string
@@ -520,10 +520,10 @@ func (sc *ServiceConfig) startVHostListener(shutdown <-chan interface{}) {
 func restGetAuth0Config(w *rest.ResponseWriter, r *rest.Request, ctx *requestContext) {
 	opts := config.GetOptions()
 	auth0Config := Auth0Config{
-		Auth0Scope:  opts.Auth0Scope,
+		Auth0Scope:    opts.Auth0Scope,
 		Auth0ClientID: opts.Auth0ClientID,
 		Auth0Audience: opts.Auth0Audience,
-		Auth0Domain: opts.Auth0Domain,
+		Auth0Domain:   opts.Auth0Domain,
 	}
 	w.Write([]byte("var Auth0Config = "))
 	w.WriteJson(auth0Config)
