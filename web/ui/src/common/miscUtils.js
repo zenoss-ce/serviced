@@ -104,11 +104,12 @@
             unauthorized: function() {
                 log.error('You don\'t appear to be logged in.');
                 // show the login page and then refresh so we lose any incorrect state. CC-279
-                if (utils.useAuth0()) {
-                    window.location.href = "/#/challenge";
-                } else {
-                    window.location.href = "/#/login";
-                }
+                // if (utils.useAuth0()) {
+                //     window.location.href = "/#/challenge";
+                // } else {
+                //     window.location.href = "/#/login";
+                // }
+                window.location.href = "/#/login";
                 window.location.reload();
             },
 

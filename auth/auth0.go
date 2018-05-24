@@ -13,6 +13,7 @@ import (
 	"github.com/zenoss/glog"
 	"net/http"
 	"strings"
+	"sync"
 )
 
 type jwtAuth0Claims struct {
@@ -89,13 +90,13 @@ type JSONWebkeys struct {
 
 type Jwks struct {
 	Keys []JSONWebkeys `json:"keys"`
+	m    sync.Mutex
 }
 
-var auth0Jwks *Jwks = nil
-
-func getPemCert(token *jwt.Token) ([]byte, error) {
-	cert := ""
-	if auth0Jwks == nil {
+func (j *Jwks) refreshIfEmpty() {
+	j.m.Lock()
+	defer j.m.Unlock()
+	if len(j.Keys) == 0 {
 		glog.V(0).Info("Fetching jwks key from auth0")
 		opts := config.GetOptions()
 		auth0Domain := opts.Auth0Domain
@@ -103,19 +104,32 @@ func getPemCert(token *jwt.Token) ([]byte, error) {
 
 		if err != nil {
 			glog.Warning("error getting well-known jwks: ", err)
-			return []byte(cert), err
+			return
 		}
 		defer resp.Body.Close()
 
-		var jwks = Jwks{}
-		err = json.NewDecoder(resp.Body).Decode(&jwks)
+		var newjwks = Jwks{}
+		err = json.NewDecoder(resp.Body).Decode(&newjwks)
 
 		if err != nil {
-			glog.Warning("error decoding PEM Certificate: ", err)
-			return []byte(cert), err
+			glog.Warning("error decoding JWKS keys from JSON: ", err)
+			return
 		}
+		j.Keys = newjwks.Keys
+	}
+	return
+}
+
+var auth0Jwks = &Jwks{}
+
+func getPemCert(token *jwt.Token) ([]byte, error) {
+	cert := ""
+	if auth0Jwks == nil {
+		var jwks = Jwks{}
 		auth0Jwks = &jwks
 	}
+	auth0Jwks.refreshIfEmpty()
+
 	x5c := auth0Jwks.Keys[0].X5c
 	for k, v := range x5c {
 		if token.Header["kid"] == auth0Jwks.Keys[k].Kid {
