@@ -33,9 +33,6 @@ var controlplane = angular.module('controlplane', [
 controlplane.
     config(['$routeProvider', function($routeProvider) {
         $routeProvider.
-            when('/challenge', {
-                templateUrl: '/static/partials/challenge.html',
-                controller: "ChallengeController"}).
             when('/login', {
                 templateUrl: '/static/partials/login.html',
                 controller: "LoginController"}).

@@ -34,7 +34,6 @@ func (t *jwtAuth0Claims) Valid() error {
 	if t.Issuer != expectedIssuer {
 		return ErrAuth0TokenBadIssuer
 	}
-	//TODO: create a new API definition in Auth0 for CC with appropriate Audience field, and update Auth0Audience value in configuration.) https://manage.auth0.com/#/apis
 	if !utils.StringInSlice(opts.Auth0Audience, t.Audience) {
 		return ErrAuth0TokenBadAudience
 	}
@@ -146,7 +145,6 @@ func getPemCert(token *jwt.Token) ([]byte, error) {
 	return []byte(cert), nil
 }
 
-// TODO: possible credit to https://stackoverflow.com/a/33088784/7154147
 func getRSAPublicKey(token *jwt.Token) (*rsa.PublicKey, error) {
 	//glog.V(0).Info("getRSAPublicKey() entry")
 	certBytes, err := getPemCert(token)

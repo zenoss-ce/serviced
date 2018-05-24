@@ -283,12 +283,17 @@
 # Set if running in gcloud; currently causes gcloud ssh tool to be used during attach and logs
 # SERVICED_GCLOUD=false
 
-# Domain configured for tenant in Auth0. Ref: https://auth0.com/docs/getting-started/the-basics#domain)
+# Domain configured for tenant in Auth0. Ref: https://auth0.com/docs/getting-started/the-basics#domain
 # SERVICED_AUTH0_DOMAIN=
 
-# Audience configured for application (?) in Auth0.
+# 'API Audience' configured in API object in Auth0 (https://manage/auth0.com/#/apis)
 # SERVICED_AUTH0_AUDIENCE=
 
-# Group required for Auth0 access
+# Group membership required for access via Auth0
 # SERVICED_AUTH0_GROUP=
 
+# Scope required for access via Auth0
+# SERVICED_AUTH0_SCOPE=
+
+# Client ID for Auth0 application object (https://manage.auth0.com/#/applications)
+# SERVICED_AUTH0_CLIENT_ID=

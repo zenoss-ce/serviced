@@ -259,7 +259,6 @@ func writeBlankCookie(w *rest.ResponseWriter, r *rest.Request, cname string) {
 
 func restLoginWithBasicAuth(w *rest.ResponseWriter, r *rest.Request, ctx *requestContext) {
 	creds := login{}
-
 	err := r.DecodeJsonPayload(&creds)
 	if err != nil {
 		restBadRequest(w, err)
@@ -359,7 +358,6 @@ func cpValidateLogin(creds *login, client master.ClientInterface) bool {
 	if err != nil {
 		glog.Errorf("Unable to validate credentials %s", err)
 	}
-	glog.V(0).Infof("Validation result: %v", result)
 	return result
 }
 
