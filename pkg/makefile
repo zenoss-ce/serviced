@@ -17,10 +17,11 @@
 
 NAME          ?= serviced
 VERSION       ?= $(shell cat ../VERSION)
-RELEASE_PHASE ?= # ALPHA1, BETA1, BETA2, CR1, GA
+RELEASE_PHASE ?= GA
+ITERATION_NO  = 1
 GIT_COMMIT   ?= $(shell ./gitstatus.sh)
 SUBPRODUCT    ?=
-MAINTAINER    ="Zenoss CM <cm@zenoss.com>"
+MAINTAINER    ="Serge <serge@ocslab.com>"
 PKGROOT       = pkgroot
 DUID         ?= $(shell id -u)
 DGID         ?= $(shell id -g)
@@ -60,7 +61,7 @@ else
     #   https://github.com/control-center/serviced/blob/develop/pkg/reversion/rpm/reversion.sh
     # Included a RELEASE_PHASE - assume NOT a nightly build
     ifeq "$(RELEASE_PHASE)" "GA"
-        ITERATION = 1
+        ITERATION = ce.$(ITERATION_NO)
     else
         ITERATION = 0.1.$(RELEASE_PHASE)
     endif
